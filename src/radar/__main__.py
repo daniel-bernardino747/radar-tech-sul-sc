@@ -18,7 +18,7 @@ from radar import ciclo, estado, fontes
 from radar.revisao import Saidas
 from radar.telegram import CanalDeTeste, CanalTelegram, ConversaDeTeste, ConversaTelegram
 
-USER_AGENT = "RadarTechSulSC/0.1 (+https://github.com/daniel-bernardino747/radar-tech-sul-sc)"
+USER_AGENT = "Mozilla/5.0 (compatible; RadarTechSulSC/0.1; +https://github.com/daniel-bernardino747/radar-tech-sul-sc)"
 
 
 def main() -> int:

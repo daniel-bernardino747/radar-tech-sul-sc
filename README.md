@@ -40,7 +40,7 @@ Formato: **canal** (só o bot publica) com **grupo de discussão vinculado** par
 |---|---|---|
 | Meetup CriciumaOps | confiável | iCal do grupo |
 | Meetup Criciúma Dev | confiável | iCal do grupo |
-| Agenda do CRIO | confiável | HTML, seguindo os links para Sympla/Even3/Supertixs |
+| Agenda do CRIO | aberta, sem filtro de tema (o CRIO também recebe eventos de outras áreas) | HTML, seguindo os links para Sympla/Even3/Supertixs |
 | Portal de eventos da SATC | confiável | HTML/XHR, com o RSS da UniSATC como reserva |
 | Sympla, busca por cidade (a de Criciúma já cobre a Região inteira, por raio) | aberta | JSON embutido na página + página do evento |
 | Agenda da ACATE | aberta | HTML |
@@ -55,7 +55,7 @@ Nenhuma Fonte tem API pública útil para descoberta: a API da Sympla só lista 
 
 ## Escopo do MVP
 
-- [ ] Coletor por Fonte (tabela acima): feito para Meetup e Sympla
+- [ ] Coletor por Fonte (tabela acima): feito para Meetup, Sympla e CRIO
 - [x] Modelo de Evento normalizado, com Status (agendado / alterado / cancelado)
 - [x] Filtro de relevância (tech + Região, sem cursos)
 - [x] Deduplicação entre Anúncios

@@ -22,11 +22,11 @@ Canal onde Organizadores ou terceiros publicam Anúncios (ex.: site do Criciúma
 _Avoid_: Origem, feed, canal
 
 **Fonte confiável**:
-Fonte cujos Anúncios são Eventos por definição (ex.: site do Criciúma Dev, agenda do CRIO). Seus Eventos são publicados sem revisão.
+Fonte cujos Anúncios são Eventos por definição, tipicamente a de um Organizador de tema único (ex.: Meetup do CriciumaOps). Seus Eventos são publicados sem revisão.
 _Avoid_: Fonte oficial, fonte curada
 
 **Fonte aberta**:
-Fonte que mistura Eventos com outras coisas (ex.: busca por cidade na Sympla, portais de notícia). Seus Anúncios só viram Post depois de aprovados na Fila de revisão.
+Fonte que pode trazer algo que não é Evento, ainda que raramente (ex.: busca por cidade na Sympla; agenda do CRIO, que também cede espaço a eventos de outros temas). Seus Anúncios só viram Post depois de aprovados na Fila de revisão.
 _Avoid_: Fonte genérica, fonte pública
 
 **Sugestão**:
