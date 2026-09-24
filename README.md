@@ -41,15 +41,15 @@ Formato: **canal** (só o bot publica) com **grupo de discussão vinculado** par
 | Meetup CriciumaOps | confiável | iCal do grupo |
 | Meetup Criciúma Dev | confiável | iCal do grupo |
 | ~~Agenda do CRIO~~ (desativada) | aberta, sem filtro de tema (o CRIO também recebe eventos de outras áreas) | HTML, seguindo os links para Sympla/Even3/Supertixs |
-| Portal de eventos da SATC | confiável | HTML/XHR, com o RSS da UniSATC como reserva |
+| Portal de eventos da SATC | aberta, com filtro de tema (a SATC publica de tudo) | JSON que alimenta o portal (`getListaEventos`) |
 | Sympla, busca por cidade (a de Criciúma já cobre a Região inteira, por raio) | aberta | JSON embutido na página + página do evento |
-| Agenda da ACATE | aberta | HTML |
-| RSS de notícias da Unesc | aberta | RSS |
+| ~~Agenda da ACATE~~ (bloqueada) | aberta | HTML |
+| ~~RSS de notícias da Unesc~~ (bloqueado) | aberta | RSS |
 | Sugestão por link (conversa privada com o bot) | aberta | segue o link |
 
 Fontes **confiáveis** são publicadas automaticamente. Fontes **abertas** passam pela Fila de revisão.
 
-A agenda do CRIO tem coletor pronto, mas está desativada: o servidor responde 403 a IPs do GitHub Actions (bloqueio por IP, não por User-Agent). Seus eventos de tecnologia costumam estar também na Sympla; o resto chega por Sugestão.
+CRIO, Unesc e ACATE respondem 403 a IPs do GitHub Actions (bloqueio por IP, não por User-Agent; testado em 2026-09-24). O CRIO tem coletor pronto, mas desativado; Unesc e ACATE ficaram sem coletor. Os eventos de tecnologia dessas instituições costumam aparecer também na Sympla, e o resto chega por Sugestão. Reavaliar a hospedagem se as Sugestões mostrarem que o Radar está perdendo eventos com frequência.
 
 Fora do MVP: grupo de WhatsApp e Instagram (ver [ADR 0002](./docs/adr/0002-sem-whatsapp-e-instagram-como-fonte.md)), SC Mais Inovação (fora do ar em 2026-09), perfil de produtor do Criciúma Dev na Sympla (carrega via JS; já coberto por outras Fontes).
 
@@ -57,7 +57,7 @@ Nenhuma Fonte tem API pública útil para descoberta: a API da Sympla só lista 
 
 ## Escopo do MVP
 
-- [ ] Coletor por Fonte (tabela acima): feito para Meetup e Sympla (CRIO pronto, mas desativado)
+- [ ] Coletor por Fonte (tabela acima): feito para Meetup, Sympla e SATC (CRIO pronto, mas desativado; Unesc e ACATE bloqueadas)
 - [x] Modelo de Evento normalizado, com Status (agendado / alterado / cancelado)
 - [x] Filtro de relevância (tech + Região, sem cursos)
 - [x] Deduplicação entre Anúncios

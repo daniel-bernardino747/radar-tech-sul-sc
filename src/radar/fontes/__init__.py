@@ -20,13 +20,16 @@ class Fonte(Protocol):
 
 def todas() -> list[Fonte]:
     from radar.fontes.meetup import Meetup
+    from radar.fontes.satc import Satc
     from radar.fontes.sympla import Sympla
 
     # A agenda do CRIO (radar.fontes.crio.Crio) está desativada: o servidor recusa com 403
-    # os IPs do GitHub Actions. Reativar se o Radar passar a rodar com IP brasileiro.
+    # os IPs do GitHub Actions, assim como Unesc e ACATE (sem coletor). Reativar se o
+    # Radar passar a rodar com IP brasileiro.
     return [
         Meetup(id="meetup-criciumaops", grupo="criciumaops"),
         Meetup(id="meetup-criciumadev", grupo="criciumadev"),
         # A página de Criciúma já traz Tubarão, Araranguá e o resto da Região.
         Sympla(id="sympla-criciuma", cidade="criciuma-sc"),
+        Satc(),
     ]

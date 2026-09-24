@@ -34,4 +34,5 @@ _MUNICIPIOS = {normalizar(m) for m in AMREC | AMUREL | AMESC}
 
 
 def eh_da_regiao(cidade: str | None) -> bool:
-    return cidade is not None and normalizar(cidade) in _MUNICIPIOS
+    """Aceita a UF junto ("Criciúma / SC", "Tubarão-SC"), que algumas Fontes incluem."""
+    return cidade is not None and normalizar(cidade).removesuffix(" sc") in _MUNICIPIOS
