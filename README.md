@@ -22,7 +22,7 @@ Para ficar sabendo de tudo, hoje é preciso estar em todos esses canais. Quem n�
 Um sistema que:
 
 1. **Coleta**: consulta periodicamente as Fontes (Meetup, Sympla, agendas institucionais) e recebe Sugestões por link
-2. **Filtra**: mantém só Eventos de tecnologia na Região (AMREC + AMUREL + AMESC); cursos pagos ficam fora
+2. **Filtra**: mantém só Eventos de tecnologia na Região (AMREC + AMUREL + AMESC), incluindo cursos gratuitos; cursos pagos ficam fora
 3. **Normaliza**: extrai título, data, horário, local, organizador, preço e link de inscrição
 4. **Deduplica**: vários Anúncios do mesmo Evento viram um Post só (mesma data + local + horário sobreposto; na dúvida, não junta)
 5. **Revisa**: Anúncios de Fontes abertas passam por uma Fila de revisão antes de publicar
@@ -72,7 +72,7 @@ Nenhuma Fonte tem API pública útil para descoberta: a API da Sympla só lista 
 - WhatsApp (como Canal ou como Fonte)
 - Site/agenda pública (pode vir depois, reaproveitando os mesmos dados)
 - Cadastro manual de eventos por organizadores (a Sugestão por link cobre o caso simples)
-- Cursos e treinamentos pagos
+- Cursos e treinamentos pagos (os gratuitos entram)
 - Eventos fora da Região, inclusive em Florianópolis
 
 ## Como rodar

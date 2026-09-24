@@ -13,7 +13,7 @@ from datetime import datetime
 
 import httpx
 
-from radar.dominio import FUSO, Anuncio
+from radar.dominio import FUSO, GRATUITO, Anuncio
 from radar.relevancia import parece_curso, parece_tech
 
 _FLIGHT = re.compile(r'self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)', re.S)
@@ -29,11 +29,11 @@ class Sympla:
 
     def coletar(self, http: httpx.Client, agora: datetime) -> Iterator[Anuncio]:
         for base in self._listar(http):
-            if (base.fim or base.inicio) < agora or not parece_tech(base) or parece_curso(base):
+            if (base.fim or base.inicio) < agora or not parece_tech(base):
                 continue
             detalhado = _detalhar(http, base)
-            if not detalhado.curso:
-                yield detalhado
+            # Curso segue adiante: se for gratuito, é Evento (quem decide é eh_elegivel).
+            yield replace(detalhado, curso=detalhado.curso or parece_curso(detalhado))
 
     def _listar(self, http: httpx.Client) -> Iterator[Anuncio]:
         pagina = 1
@@ -96,7 +96,7 @@ def ler_pagina_evento(html: str, fonte: str, url: str) -> Anuncio | None:
         cidade=None if online else (endereco.get("city") or None),
         online=online,
         organizador=host.get("name") or None,
-        preco={"free": "Gratuito", "paid": "Pago"}.get(ev.get("paymentEventType")),
+        preco={"free": GRATUITO, "paid": "Pago"}.get(ev.get("paymentEventType")),
         cancelado=bool(ev.get("cancelled")),
         curso=bool(ev.get("courseInfo")),
     )

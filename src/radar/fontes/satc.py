@@ -6,12 +6,12 @@ viagens) e só uma parte é de tecnologia. O portal não informa horário, só d
 
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, time
 
 import httpx
 
-from radar.dominio import FUSO, Anuncio
+from radar.dominio import FUSO, GRATUITO, Anuncio
 from radar.relevancia import parece_curso, parece_tech
 
 LISTA = "https://www1.satc.edu.br/eventos/index.php/eventos/getListaEventos"
@@ -28,8 +28,8 @@ class Satc:
         resposta.raise_for_status()
         for ev in ler_lista(resposta.content):
             a = anuncio_da_satc(ev, self.id)
-            if (a.fim or a.inicio) >= agora and parece_tech(a) and not parece_curso(a):
-                yield a
+            if (a.fim or a.inicio) >= agora and parece_tech(a):
+                yield replace(a, curso=parece_curso(a))
 
 
 def ler_lista(conteudo: bytes) -> list[dict]:
@@ -50,7 +50,7 @@ def anuncio_da_satc(ev: dict, fonte: str) -> Anuncio:
         local=(ev.get("local") or "").strip() or None,
         cidade=(ev.get("cidade") or "").strip() or None,
         organizador="SATC",
-        preco="Gratuito" if valor == 0 else f"R$ {valor:.2f}".replace(".", ","),
+        preco=GRATUITO if valor == 0 else f"R$ {valor:.2f}".replace(".", ","),
     )
 
 

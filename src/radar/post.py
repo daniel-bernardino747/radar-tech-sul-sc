@@ -17,7 +17,9 @@ def texto_post(e: Evento) -> str:
     linhas = [titulo, "", f"📅 {quando(e)}", f"📍 {onde(e)}"]
     if e.organizador:
         linhas.append(f"👥 {escape(e.organizador)}")
-    if e.preco:
+    if e.curso:
+        linhas.append("🎓 Curso gratuito")
+    elif e.preco:
         linhas.append(f"💰 {escape(e.preco)}")
     linhas.append(f'🔗 <a href="{escape(e.link, quote=True)}">Inscrição</a>')
     return "\n".join(linhas)

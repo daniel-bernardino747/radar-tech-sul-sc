@@ -14,6 +14,12 @@ class TestRegiao:
         assert not eh_da_regiao("Florianópolis")
         assert not eh_da_regiao(None)
 
+    def test_curso_so_entra_se_gratuito(self):
+        assert eh_elegivel(anuncio(curso=True, preco="Gratuito"))
+        assert not eh_elegivel(anuncio(curso=True, preco="Pago"))
+        assert not eh_elegivel(anuncio(curso=True, preco=None))  # sem indicação de gratuidade, fica fora
+        assert eh_elegivel(anuncio(preco="Pago"))  # evento pago continua entrando
+
     def test_online_e_elegivel_presencial_fora_nao(self):
         assert eh_elegivel(anuncio(online=True, cidade=None, local=None))
         assert not eh_elegivel(anuncio(cidade="Florianópolis"))

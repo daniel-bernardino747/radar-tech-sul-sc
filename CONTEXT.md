@@ -5,7 +5,7 @@ Agregador que reúne numa única vitrine os eventos de tecnologia de Criciúma e
 ## Language
 
 **Evento**:
-Encontro com data marcada, aberto ao público (gratuito ou pago), cujo tema principal é tecnologia e que acontece presencialmente na região, ou online quando o Organizador é regional. Inclui meetups, palestras, hackathons e feiras com trilha tech.
+Encontro com data marcada, aberto ao público (gratuito ou pago), cujo tema principal é tecnologia e que acontece presencialmente na região, ou online quando o Organizador é regional. Inclui meetups, palestras, hackathons, feiras com trilha tech e também cursos, workshops e treinamentos gratuitos: tudo o que faz sentido na carreira de quem é de tecnologia.
 Pode durar vários dias; nesse caso é um único Evento com data de início e de fim.
 _Avoid_: Encontro, agenda, post
 
@@ -50,7 +50,7 @@ Pessoa autorizada a aprovar ou rejeitar Anúncios da Fila de revisão.
 _Avoid_: Moderador, admin, curador
 
 **Curso**:
-Treinamento comercial pago, geralmente com várias aulas. Não é um Evento e fica fora do Radar, mesmo que seja sobre tecnologia.
+Treinamento pago, geralmente com várias aulas. Não é um Evento e fica fora do Radar, mesmo que seja sobre tecnologia. Um curso só vira Evento quando a página indica inscrição gratuita; bolsa ou desconto não bastam.
 _Avoid_: Workshop (quando pago e comercial), formação, treinamento
 
 **Região**:

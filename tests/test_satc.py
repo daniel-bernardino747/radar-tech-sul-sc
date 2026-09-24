@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 import httpx
@@ -33,6 +34,15 @@ def test_coleta_so_o_que_parece_tech_e_nao_passou(fixtures):
         "2º Congresso Internacional de Inovação em Materiais e Processos de Manufatura (INOVAMAT)",
         "Introdução à Computação em Nuvem - AWS",
     ]
+
+
+def test_curso_gratuito_da_satc_segue_marcado():
+    ev = {"descricao": "Curso de Python para Iniciantes", "data_inicial": "05/10/2026", "data_final": "09/10/2026",
+          "local": "SATC", "cidade": "Criciúma", "valor_taxa": "0.00", "slug": "python-1"}
+    corpo = json.dumps({"count": 1, "data": [ev]}).encode()
+    http = httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, content=corpo)))
+    [a] = Satc().coletar(http, datetime.fromisoformat("2026-10-01T00:00:00-03:00"))
+    assert a.curso and a.preco == "Gratuito" and eh_elegivel(a)
 
 
 def test_cidade_com_uf():

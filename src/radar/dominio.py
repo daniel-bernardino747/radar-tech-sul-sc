@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from radar.regiao import eh_da_regiao, normalizar
 
 FUSO = ZoneInfo("America/Sao_Paulo")
+GRATUITO = "Gratuito"
 
 
 class Status(StrEnum):
@@ -36,7 +37,7 @@ class Anuncio:
     preco: str | None = None
     link_inscricao: str | None = None
     cancelado: bool = False
-    curso: bool = False
+    curso: bool = False  # é um curso/treinamento, pago ou não; só o gratuito é Evento
 
 
 @dataclass
@@ -57,6 +58,7 @@ class Evento:
     post_id: int | None = None
     publicado_em: datetime | None = None
     lembrete_enviado: bool = False
+    curso: bool = False
 
     @classmethod
     def de_anuncio(cls, a: Anuncio) -> Evento:
@@ -73,6 +75,7 @@ class Evento:
             preco=a.preco,
             link_inscricao=a.link_inscricao or a.url,
             urls=[a.url],
+            curso=a.curso,
             status=Status.CANCELADO if a.cancelado else Status.AGENDADO,
         )
 
@@ -91,12 +94,12 @@ class ItemFila:
 
 
 def eh_elegivel(a: Anuncio) -> bool:
-    """Não é Curso e é presencial na Região ou online.
+    """Não é Curso (curso só entra se gratuito) e é presencial na Região ou online.
 
     Se um Evento online é de Organizador regional, quem garante é a Fonte confiável
     ou o Revisor.
     """
-    return not a.curso and (a.online or eh_da_regiao(a.cidade))
+    return (not a.curso or a.preco == GRATUITO) and (a.online or eh_da_regiao(a.cidade))
 
 
 def mesmo_evento(a: Anuncio, e: Evento) -> bool:
