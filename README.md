@@ -84,7 +84,7 @@ uv run python -m radar             # sem TELEGRAM_BOT_TOKEN: roda uma vez, só i
 uv run python -m radar --uma-vez   # com token: conversa, coleta e divulgação uma vez, e sai
 ```
 
-Em produção, o Radar roda no Railway como processo contínuo ([ADR 0003](./docs/adr/0003-processo-continuo-no-railway.md)): responde no Telegram em segundos, coleta as Fontes às 8h e 18h e checa Lembretes e Agenda da semana a cada minuto. O deploy usa o `Dockerfile` e o `railway.json` da raiz. O GitHub Actions só roda os testes.
+Em produção, o Radar roda no Railway como processo contínuo ([ADR 0003](./docs/adr/0003-processo-continuo-no-railway.md)): responde no Telegram em segundos, coleta as Fontes às 8h e 18h e checa Lembretes e Agenda da semana a cada minuto. O deploy usa o `Dockerfile` da raiz, e a infraestrutura (serviço, volume, build, variáveis) está declarada como código em [`.railway/railway.py`](./.railway/railway.py). O GitHub Actions só roda os testes.
 
 Variáveis de ambiente do serviço:
 
