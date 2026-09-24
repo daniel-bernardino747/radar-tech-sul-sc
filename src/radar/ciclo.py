@@ -7,7 +7,7 @@ from enum import Enum, auto
 
 import httpx
 
-from radar import revisao
+from radar import divulgacao, revisao
 from radar.dominio import Anuncio, Evento, ItemFila, aplicar, eh_elegivel, mesmo_evento
 from radar.estado import Estado
 from radar.fontes import Fonte
@@ -54,7 +54,9 @@ def executar(
     for sugestao in sugestoes:
         receber_sugestao(estado, sugestao, http, saidas, agora, ler)
 
-    publicar_pendentes(estado, saidas)
+    publicar_pendentes(estado, saidas, agora)
+    divulgacao.enviar_lembretes(estado, saidas.canal, agora)
+    divulgacao.publicar_agenda(estado, saidas.canal, agora)
     revisao.expirar(estado, agora, saidas)
     revisao.pedir_revisoes(estado, saidas)
     esquecer_antigos(estado, agora)
@@ -140,10 +142,11 @@ def _motivo_inelegivel(a: Anuncio) -> str:
     return "O Radar só divulga eventos no Sul de SC (AMREC, AMUREL e AMESC) ou online."
 
 
-def publicar_pendentes(estado: Estado, saidas: Saidas) -> None:
+def publicar_pendentes(estado: Estado, saidas: Saidas, agora: datetime) -> None:
     for e in sorted(estado.eventos, key=lambda e: e.inicio):
         if e.post_id is None:
             e.post_id = saidas.canal.publicar(texto_post(e))
+            e.publicado_em = agora
 
 
 def esquecer_antigos(estado: Estado, agora: datetime) -> None:

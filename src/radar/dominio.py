@@ -55,6 +55,7 @@ class Evento:
     urls: list[str] = field(default_factory=list)
     status: Status = Status.AGENDADO
     post_id: int | None = None
+    publicado_em: datetime | None = None
     lembrete_enviado: bool = False
 
     @classmethod

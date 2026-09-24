@@ -41,6 +41,9 @@ class CanalFalso:
     def editar(self, post_id, texto):
         self.editados.append((post_id, texto))
 
+    def link_do_post(self, post_id):
+        return f"https://t.me/radar/{post_id}"
+
 
 @dataclass
 class ConversaFalsa:

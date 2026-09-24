@@ -15,6 +15,8 @@ class Estado:
     rejeitados: list[Evento] = field(default_factory=list)
     # Próximo update_id a pedir ao Telegram; o que vem antes já foi processado.
     offset_telegram: int = 0
+    # Segunda-feira (AAAA-MM-DD) da última Agenda da semana publicada.
+    ultima_agenda: str | None = None
 
 
 def carregar(caminho: Path) -> Estado:
@@ -26,6 +28,7 @@ def carregar(caminho: Path) -> Estado:
         fila=[_item(i) for i in bruto.get("fila", [])],
         rejeitados=[_evento(e) for e in bruto.get("rejeitados", [])],
         offset_telegram=bruto.get("offset_telegram", 0),
+        ultima_agenda=bruto.get("ultima_agenda"),
     )
 
 
@@ -33,6 +36,7 @@ def salvar(estado: Estado, caminho: Path) -> None:
     caminho.parent.mkdir(parents=True, exist_ok=True)
     conteudo = {
         "offset_telegram": estado.offset_telegram,
+        "ultima_agenda": estado.ultima_agenda,
         "eventos": [asdict(e) for e in _ordenados(estado.eventos)],
         "fila": [asdict(i) for i in sorted(estado.fila, key=lambda i: (i.evento.inicio, i.evento.id))],
         "rejeitados": [asdict(e) for e in _ordenados(estado.rejeitados)],
@@ -57,6 +61,7 @@ def _evento(d: dict) -> Evento:
     d = dict(d)
     d["inicio"] = datetime.fromisoformat(d["inicio"])
     d["fim"] = datetime.fromisoformat(d["fim"]) if d.get("fim") else None
+    d["publicado_em"] = datetime.fromisoformat(d["publicado_em"]) if d.get("publicado_em") else None
     d["status"] = Status(d["status"])
     return Evento(**d)
 

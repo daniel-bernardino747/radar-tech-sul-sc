@@ -10,6 +10,8 @@ class Canal(Protocol):
 
     def editar(self, post_id: int, texto: str) -> None: ...
 
+    def link_do_post(self, post_id: int) -> str: ...
+
 
 class Conversa(Protocol):
     """Conversas privadas com o bot: o Revisor decide a Fila, qualquer pessoa manda Sugestões."""
@@ -62,6 +64,12 @@ class CanalTelegram(_Bot):
 
     def editar(self, post_id: int, texto: str) -> None:
         self._editar(self._chat_id, post_id, texto)
+
+    def link_do_post(self, post_id: int) -> str:
+        canal = str(self._chat_id)
+        if canal.startswith("@"):
+            return f"https://t.me/{canal[1:]}/{post_id}"
+        return f"https://t.me/c/{canal.removeprefix('-100')}/{post_id}"  # Canal privado
 
     def verificar(self) -> str:
         """Confirma, sem postar, que o bot pode publicar no Canal. Devolve o nome do Canal."""
@@ -116,6 +124,9 @@ class CanalDeTeste:
 
     def editar(self, post_id: int, texto: str) -> None:
         print(f"[edita post {post_id}]\n{texto}\n")
+
+    def link_do_post(self, post_id: int) -> str:
+        return f"https://t.me/teste/{post_id}"
 
 
 class ConversaDeTeste:
