@@ -33,6 +33,9 @@ SEMENTE = Path("estado/estado.json")
 
 def main() -> int:
     caminho = Path(os.environ.get("RADAR_ESTADO", "estado/estado.json"))
+    if erro := checar_volume(caminho, os.environ):
+        print(erro, file=sys.stderr)
+        return 2
     _semear(caminho)
 
     with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30, follow_redirects=True) as http:
@@ -63,6 +66,20 @@ def _uma_vez(saidas: Saidas, http: httpx.Client, caminho: Path, salvar: bool) ->
     publicados = sum(e.post_id is not None for e in atual.eventos)
     print(f"{len(atual.eventos)} Eventos acompanhados, {publicados} com Post, {len(atual.fila)} na Fila de revisão.")
     return 1 if falhas else 0
+
+
+def checar_volume(caminho: Path, ambiente) -> str | None:
+    """No Railway, o estado precisa estar num volume: fora dele, some a cada deploy (e sem
+    volume o Railway sobrepõe a instância nova à antiga, e duas leem o bot ao mesmo tempo)."""
+    if "RAILWAY_ENVIRONMENT" not in ambiente:
+        return None
+    volume = ambiente.get("RAILWAY_VOLUME_MOUNT_PATH")
+    if not volume:
+        return ("Nenhum volume montado neste serviço do Railway: o estado se perderia a cada deploy. "
+                "Crie um volume em /data (Settings → Volumes) e mantenha RADAR_ESTADO=/data/estado.json.")
+    if not caminho.resolve().is_relative_to(Path(volume).resolve()):
+        return f"RADAR_ESTADO ({caminho}) está fora do volume montado em {volume}: o estado se perderia a cada deploy."
+    return None
 
 
 def _semear(caminho: Path) -> None:

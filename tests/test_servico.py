@@ -1,3 +1,4 @@
+from pathlib import Path
 from dataclasses import dataclass
 
 import httpx
@@ -120,3 +121,36 @@ def test_sugestao_pelo_servico_grava_o_ponteiro_antes_de_abrir_o_link(tmp_path):
     s.passo(espera=0)
     assert offsets_gravados == [42]
     assert len(s.estado.fila) == 1 and "revisão" in conversa.respostas[0][1]
+
+
+class TestVolume:
+    def test_fora_do_railway_nao_checa(self):
+        from radar.__main__ import checar_volume
+
+        assert checar_volume(Path("estado/estado.json"), {}) is None
+
+    def test_railway_sem_volume_recusa(self):
+        from radar.__main__ import checar_volume
+
+        assert "Nenhum volume" in checar_volume(Path("/data/estado.json"), {"RAILWAY_ENVIRONMENT": "production"})
+
+    def test_railway_com_estado_fora_do_volume_recusa(self, tmp_path):
+        from radar.__main__ import checar_volume
+
+        ambiente = {"RAILWAY_ENVIRONMENT": "production", "RAILWAY_VOLUME_MOUNT_PATH": str(tmp_path / "data")}
+        assert "fora do volume" in checar_volume(tmp_path / "outro" / "estado.json", ambiente)
+        assert checar_volume(tmp_path / "data" / "estado.json", ambiente) is None
+
+
+def test_conflito_curto_nao_alerta_longo_alerta(tmp_path):
+    from radar.telegram import ErroTelegram
+
+    s, _, conversa, relogio = servico(tmp_path)
+    conflito = ErroTelegram("getUpdates: Conflict: terminated by other getUpdates request")
+    s.tratar_erro(conflito)
+    relogio.atual = em(12, 8, 7)
+    s.tratar_erro(conflito)
+    assert conversa.respostas == []
+    relogio.atual = em(12, 8, 9)
+    s.tratar_erro(conflito)
+    assert len(conversa.respostas) == 1 and "outra instância" in conversa.respostas[0][1]

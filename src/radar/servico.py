@@ -20,11 +20,13 @@ from radar.dominio import FUSO
 from radar.fontes import Fonte
 from radar.fontes.links import ler_link
 from radar.revisao import Limites, Saidas, avisar
+from radar.telegram import ErroTelegram
 
 HORARIOS_DE_COLETA = (time(8), time(18))
 ESPERA = 25  # segundos de long polling; também é o intervalo máximo entre checagens de Lembrete e Agenda
 INTERVALO_ENTRE_ALERTAS = timedelta(hours=1)
 PAUSA_APOS_ERRO = 10
+CONFLITO_TOLERADO = timedelta(minutes=3)
 
 
 def ultimo_horario_de_coleta(agora: datetime) -> datetime:
@@ -59,6 +61,7 @@ class Servico:
         self.estado = estado.carregar(caminho)
         self._salvo = estado.serializar(self.estado)
         self._ultimo_alerta: datetime | None = None
+        self._conflito_desde: datetime | None = None
         self.limites = Limites()
         self.parar = False
         saidas.persistir = self.salvar
@@ -68,12 +71,26 @@ class Servico:
         while not self.parar:
             try:
                 self.passo()
+                self._conflito_desde = None
             except Exception as erro:
-                traceback.print_exc()
-                self._alertar(f"⚠️ Erro no Radar: {escape(repr(erro))}")
+                self.tratar_erro(erro)
                 relogio_do_sistema.sleep(PAUSA_APOS_ERRO)
             finally:
                 self.salvar()
+
+    def tratar_erro(self, erro: Exception) -> None:
+        """Conflito no getUpdates por poucos segundos é normal num deploy (a instância antiga
+        ainda está saindo); só vira alerta se durar, porque aí há mesmo outra instância."""
+        if isinstance(erro, ErroTelegram) and "Conflict" in str(erro):
+            agora = self.agora()
+            self._conflito_desde = self._conflito_desde or agora
+            print(f"Outra instância lendo o bot: {erro}", flush=True)
+            if agora - self._conflito_desde >= CONFLITO_TOLERADO:
+                self._alertar("⚠️ Há outra instância do bot rodando há alguns minutos. "
+                              "Confira se não existem dois deploys ou serviços do Radar.")
+            return
+        traceback.print_exc()
+        self._alertar(f"⚠️ Erro no Radar: {escape(repr(erro))}")
 
     def passo(self, espera: int = ESPERA) -> None:
         agora = self.agora()
