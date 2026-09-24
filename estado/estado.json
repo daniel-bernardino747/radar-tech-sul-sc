@@ -1,3 +1,76 @@
 {
-  "eventos": []
+  "offset_telegram": 0,
+  "eventos": [],
+  "fila": [
+    {
+      "evento": {
+        "id": "d90b1c13c8f1",
+        "titulo": "Pullsa Conecta",
+        "inicio": "2026-10-07T16:30:00+00:00",
+        "fim": "2026-10-07T21:00:00+00:00",
+        "tem_horario": true,
+        "local": "Centro de Inovação de Tubarão/SC - Sigma Park",
+        "cidade": "Tubarão",
+        "online": false,
+        "organizador": "Pullsa - Hub de inovação",
+        "preco": "Pago",
+        "link_inscricao": "https://www.sympla.com.br/evento/pullsa-conecta/3552374",
+        "urls": [
+          "https://www.sympla.com.br/evento/pullsa-conecta/3552374"
+        ],
+        "status": "agendado",
+        "post_id": null,
+        "lembrete_enviado": false
+      },
+      "mensagem_id": null,
+      "sugerido_por": null
+    },
+    {
+      "evento": {
+        "id": "3a7c3a499ca2",
+        "titulo": "Innovation Summit 2026",
+        "inicio": "2026-11-04T15:00:00+00:00",
+        "fim": "2026-11-04T22:00:00+00:00",
+        "tem_horario": true,
+        "local": "Arena Multiuso Prefeito Estêner Soratto da Silva",
+        "cidade": "Tubarão",
+        "online": false,
+        "organizador": "PTM/SEBRAE/SIGMA",
+        "preco": "Pago",
+        "link_inscricao": "https://www.sympla.com.br/evento/innovation-summit-2026/3521387",
+        "urls": [
+          "https://www.sympla.com.br/evento/innovation-summit-2026/3521387"
+        ],
+        "status": "agendado",
+        "post_id": null,
+        "lembrete_enviado": false
+      },
+      "mensagem_id": null,
+      "sugerido_por": null
+    },
+    {
+      "evento": {
+        "id": "ec2bb0fdf3c8",
+        "titulo": "Unesc Summit 2026",
+        "inicio": "2026-11-07T11:30:00+00:00",
+        "fim": "2026-11-07T21:00:00+00:00",
+        "tem_horario": true,
+        "local": "Centro de Inovação Criciúma - CRIO",
+        "cidade": "Criciúma",
+        "online": false,
+        "organizador": "Agência de Inovação da Unesc",
+        "preco": "Pago",
+        "link_inscricao": "https://www.sympla.com.br/evento/unesc-summit-2026/3545619",
+        "urls": [
+          "https://www.sympla.com.br/evento/unesc-summit-2026/3545619"
+        ],
+        "status": "agendado",
+        "post_id": null,
+        "lembrete_enviado": false
+      },
+      "mensagem_id": null,
+      "sugerido_por": null
+    }
+  ],
+  "rejeitados": []
 }
