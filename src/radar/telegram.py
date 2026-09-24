@@ -30,6 +30,17 @@ class CanalTelegram:
             if "message is not modified" not in str(erro):
                 raise
 
+    def verificar(self) -> str:
+        """Confirma, sem postar, que o bot pode publicar no Canal. Devolve o nome do Canal."""
+        bot = self._chamar("getMe", {})
+        canal = self._chamar("getChat", {"chat_id": self._chat_id})
+        membro = self._chamar("getChatMember", {"chat_id": self._chat_id, "user_id": bot["id"]})
+        if membro["status"] != "administrator" or not membro.get("can_post_messages"):
+            raise ErroTelegram(f"@{bot['username']} precisa ser administrador do Canal com permissão de postar")
+        if not membro.get("can_edit_messages"):
+            raise ErroTelegram(f"@{bot['username']} precisa de permissão para editar mensagens no Canal")
+        return canal.get("title") or str(self._chat_id)
+
     def _chamar(self, metodo: str, corpo: dict) -> dict:
         resposta = self._http.post(f"{self._base}/{metodo}", json=corpo)
         dado = resposta.json()

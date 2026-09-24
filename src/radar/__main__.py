@@ -24,12 +24,16 @@ def main() -> int:
     atual = estado.carregar(caminho)
     with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30, follow_redirects=True) as http:
         canal = _canal(http)
+        if isinstance(canal, CanalTelegram):
+            print(f"Canal verificado: {canal.verificar()}")
         try:
             falhas = ciclo.executar(fontes.todas(), http, canal, atual, datetime.now(UTC))
         finally:
             # Em modo de teste os ids de Post são falsos; salvar corromperia o estado.
             if isinstance(canal, CanalTelegram):
                 estado.salvar(atual, caminho)
+    publicados = sum(e.post_id is not None for e in atual.eventos)
+    print(f"{len(atual.eventos)} Eventos acompanhados, {publicados} com Post.")
     return 1 if falhas else 0
 
 
