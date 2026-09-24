@@ -21,7 +21,8 @@
       "status": "agendado",
       "post_id": 3,
       "publicado_em": null,
-      "lembrete_enviado": false
+      "lembrete_enviado": false,
+      "curso": false
     },
     {
       "id": "3a7c3a499ca2",
@@ -41,7 +42,8 @@
       "status": "agendado",
       "post_id": 4,
       "publicado_em": null,
-      "lembrete_enviado": false
+      "lembrete_enviado": false,
+      "curso": false
     },
     {
       "id": "ec2bb0fdf3c8",
@@ -61,7 +63,8 @@
       "status": "agendado",
       "post_id": 5,
       "publicado_em": null,
-      "lembrete_enviado": false
+      "lembrete_enviado": false,
+      "curso": false
     }
   ],
   "fila": [
@@ -84,7 +87,8 @@
         "status": "agendado",
         "post_id": null,
         "publicado_em": null,
-        "lembrete_enviado": false
+        "lembrete_enviado": false,
+        "curso": false
       },
       "mensagem_id": 8,
       "sugerido_por": null
@@ -108,7 +112,8 @@
         "status": "agendado",
         "post_id": null,
         "publicado_em": null,
-        "lembrete_enviado": false
+        "lembrete_enviado": false,
+        "curso": false
       },
       "mensagem_id": 7,
       "sugerido_por": null
