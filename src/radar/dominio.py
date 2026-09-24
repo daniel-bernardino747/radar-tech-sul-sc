@@ -1,0 +1,179 @@
+"""Anúncio, Evento e as regras que ligam um ao outro. Termos em CONTEXT.md."""
+
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import StrEnum
+
+from radar.regiao import eh_da_regiao, normalizar
+
+
+class Status(StrEnum):
+    AGENDADO = "agendado"
+    ALTERADO = "alterado"
+    CANCELADO = "cancelado"
+
+
+@dataclass(frozen=True)
+class Anuncio:
+    """O que uma Fonte publica sobre um Evento."""
+
+    fonte: str
+    url: str
+    titulo: str
+    inicio: datetime
+    fim: datetime | None = None
+    tem_horario: bool = True
+    local: str | None = None
+    cidade: str | None = None
+    online: bool = False
+    organizador: str | None = None
+    preco: str | None = None
+    link_inscricao: str | None = None
+    cancelado: bool = False
+
+
+@dataclass
+class Evento:
+    id: str
+    titulo: str
+    inicio: datetime
+    fim: datetime | None
+    tem_horario: bool
+    local: str | None
+    cidade: str | None
+    online: bool
+    organizador: str | None
+    preco: str | None
+    link_inscricao: str | None
+    urls: list[str] = field(default_factory=list)
+    status: Status = Status.AGENDADO
+    post_id: int | None = None
+    lembrete_enviado: bool = False
+
+    @classmethod
+    def de_anuncio(cls, a: Anuncio) -> Evento:
+        return cls(
+            id=hashlib.sha1(a.url.encode()).hexdigest()[:12],
+            titulo=a.titulo,
+            inicio=a.inicio,
+            fim=a.fim,
+            tem_horario=a.tem_horario,
+            local=a.local,
+            cidade=a.cidade,
+            online=a.online,
+            organizador=a.organizador,
+            preco=a.preco,
+            link_inscricao=a.link_inscricao or a.url,
+            urls=[a.url],
+            status=Status.CANCELADO if a.cancelado else Status.AGENDADO,
+        )
+
+    @property
+    def link(self) -> str:
+        return self.link_inscricao or self.urls[0]
+
+
+def eh_elegivel(a: Anuncio) -> bool:
+    """Presencial na Região, ou online. Online só chega aqui vindo de Organizador regional."""
+    return a.online or eh_da_regiao(a.cidade)
+
+
+def mesmo_evento(a: Anuncio, e: Evento) -> bool:
+    """Mesma data, mesmo local e horários sobrepostos. Na dúvida, não junta."""
+    if a.url in e.urls:
+        return True
+    if not (a.tem_horario and e.tem_horario):
+        return False
+    if a.inicio.date() != e.inicio.date():
+        return False
+    if not _mesmo_local(a, e):
+        return False
+    return _sobrepoe(a.inicio, a.fim, e.inicio, e.fim)
+
+
+def _mesmo_local(a: Anuncio, e: Evento) -> bool:
+    if a.online or e.online:
+        return a.online and e.online
+    if not (a.cidade and e.cidade and a.local and e.local):
+        return False
+    if normalizar(a.cidade) != normalizar(e.cidade):
+        return False
+    return _semelhantes(a.local, e.local)
+
+
+_IRRELEVANTES = {"de", "da", "do", "das", "dos", "e", "centro", "sc"}
+
+
+def _semelhantes(x: str, y: str) -> bool:
+    """Metade ou mais das palavras do nome mais curto aparece no outro."""
+    px = {p for p in normalizar(x).split() if p not in _IRRELEVANTES}
+    py = {p for p in normalizar(y).split() if p not in _IRRELEVANTES}
+    menor = min(len(px), len(py))
+    return menor > 0 and len(px & py) / menor >= 0.5
+
+
+def _sobrepoe(i1: datetime, f1: datetime | None, i2: datetime, f2: datetime | None) -> bool:
+    f1 = f1 or i1
+    f2 = f2 or i2
+    return i1 <= f2 and i2 <= f1
+
+
+# O que muda no Evento quando um Anúncio dele muda.
+MUDANCA_RELEVANTE = ("inicio", "fim", "local", "cidade", "online")
+MUDANCA_DETALHE = ("titulo", "organizador", "preco", "link_inscricao")
+
+
+@dataclass(frozen=True)
+class Mudanca:
+    relevantes: tuple[str, ...]
+    detalhes: tuple[str, ...]
+    cancelou: bool
+
+    @property
+    def houve(self) -> bool:
+        return bool(self.relevantes or self.detalhes or self.cancelou)
+
+
+def aplicar(e: Evento, a: Anuncio) -> Mudanca:
+    """Atualiza o Evento com um Anúncio que já é dele e diz o que mudou.
+
+    Só o Anúncio que originou o Evento (primeira URL) pode alterar data e local;
+    os demais apenas preenchem campos vazios.
+    """
+    if a.url not in e.urls:
+        e.urls.append(a.url)
+
+    if e.status is Status.CANCELADO:
+        return Mudanca((), (), False)
+
+    if a.url != e.urls[0]:
+        for campo in MUDANCA_RELEVANTE + MUDANCA_DETALHE:
+            if getattr(e, campo) in (None, False) and getattr(a, campo) not in (None, False):
+                setattr(e, campo, getattr(a, campo))
+        return Mudanca((), (), False)
+
+    if a.cancelado:
+        e.status = Status.CANCELADO
+        return Mudanca((), (), True)
+
+    relevantes = tuple(c for c in MUDANCA_RELEVANTE if getattr(a, c) != getattr(e, c))
+    novo_link = a.link_inscricao or a.url
+    detalhes = tuple(
+        c for c in MUDANCA_DETALHE
+        if (novo_link if c == "link_inscricao" else getattr(a, c)) != getattr(e, c)
+    )
+    for c in relevantes + detalhes:
+        setattr(e, c, novo_link if c == "link_inscricao" else getattr(a, c))
+    e.tem_horario = a.tem_horario
+    if relevantes:
+        e.status = Status.ALTERADO
+        e.lembrete_enviado = False
+    return Mudanca(relevantes, detalhes, False)
+
+
+__all__ = [
+    "Anuncio", "Evento", "Mudanca", "Status", "aplicar", "eh_elegivel", "mesmo_evento",
+]
