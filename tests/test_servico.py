@@ -103,3 +103,20 @@ def test_estado_do_arquivo_nao_corrompe_com_tmp(tmp_path):
     s.passo(espera=0)
     assert not (tmp_path / "estado.tmp").exists()
     assert estado.carregar(tmp_path / "estado.json").eventos
+
+
+def test_sugestao_pelo_servico_grava_o_ponteiro_antes_de_abrir_o_link(tmp_path):
+    arquivo = tmp_path / "estado.json"
+    offsets_gravados = []
+
+    def ler(http, url, fonte):
+        offsets_gravados.append(estado.carregar(arquivo).offset_telegram)
+        return anuncio(url=url)
+
+    canal, conversa = CanalFalso(), ConversaFalsa()
+    s = Servico([], httpx.Client(), Saidas(canal, conversa, REVISOR), arquivo, agora=Relogio(em(12, 8, 5)), ler=ler)
+    conversa.chegando = [{"update_id": 41, "message": {"chat": {"id": 7, "type": "private"}, "from": {"id": 7},
+                                                        "text": "https://www.sympla.com.br/evento/x/1"}}]
+    s.passo(espera=0)
+    assert offsets_gravados == [42]
+    assert len(s.estado.fila) == 1 and "revisão" in conversa.respostas[0][1]

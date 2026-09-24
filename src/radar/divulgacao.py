@@ -1,12 +1,14 @@
 """Lembretes e Agenda da semana, derivados dos Eventos já publicados."""
 
+import sys
+from collections.abc import Callable
 from datetime import date, datetime, time, timedelta
 from html import escape
 
 from radar.dominio import FUSO, Evento, Status
 from radar.estado import Estado
 from radar.post import quando
-from radar.telegram import Canal
+from radar.telegram import Canal, ErroTelegram
 
 HORA_DO_LEMBRETE = time(10)
 HORA_DA_AGENDA = time(8)
@@ -29,14 +31,21 @@ def precisa_de_lembrete(e: Evento) -> bool:
     )
 
 
-def enviar_lembretes(estado: Estado, canal: Canal, agora: datetime) -> None:
+def enviar_lembretes(
+    estado: Estado, canal: Canal, agora: datetime, persistir: Callable[[], None] = lambda: None
+) -> None:
     for e in estado.eventos:
         if not precisa_de_lembrete(e) or agora >= e.inicio:
             continue
         if agora < datetime.combine(dia_do_lembrete(e), HORA_DO_LEMBRETE, FUSO):
             continue
-        canal.publicar(texto_lembrete(e, agora), resposta_a=e.post_id)
+        try:
+            canal.publicar(texto_lembrete(e, agora), resposta_a=e.post_id)
+        except ErroTelegram as erro:
+            # Lembrete é cortesia: se falhar, desiste em vez de tentar de novo a cada minuto.
+            print(f"Lembrete de {e.id} falhou: {erro}", file=sys.stderr)
         e.lembrete_enviado = True
+        persistir()
 
 
 def texto_lembrete(e: Evento, agora: datetime) -> str:
@@ -56,7 +65,9 @@ def _relativo(e: Evento, agora: datetime) -> str:
 _NOMES = ["na segunda", "na terça", "na quarta", "na quinta", "na sexta", "no sábado", "no domingo"]
 
 
-def publicar_agenda(estado: Estado, canal: Canal, agora: datetime) -> None:
+def publicar_agenda(
+    estado: Estado, canal: Canal, agora: datetime, persistir: Callable[[], None] = lambda: None
+) -> None:
     local = agora.astimezone(FUSO)
     segunda = local.date() - timedelta(days=local.weekday())
     if local.weekday() != SEGUNDA or local.time() < HORA_DA_AGENDA or estado.ultima_agenda == segunda.isoformat():
@@ -69,13 +80,19 @@ def publicar_agenda(estado: Estado, canal: Canal, agora: datetime) -> None:
          and inicio <= e.inicio < inicio + timedelta(days=7)),
         key=lambda e: e.inicio,
     )
+    persistir()  # a Agenda da semana sai uma vez só, mesmo que o envio abaixo falhe
     if estado.agenda_fixada is not None:
         canal.desafixar(estado.agenda_fixada)
         estado.agenda_fixada = None
-    if da_semana:
+    if not da_semana:
+        return
+    try:
         post_id = canal.publicar(texto_agenda(segunda, da_semana, canal))
-        canal.fixar(post_id)
         estado.agenda_fixada = post_id
+        persistir()
+        canal.fixar(post_id)
+    except ErroTelegram as erro:
+        print(f"Agenda da semana falhou: {erro}", file=sys.stderr)
 
 
 def texto_agenda(segunda: date, eventos: list[Evento], canal: Canal) -> str:

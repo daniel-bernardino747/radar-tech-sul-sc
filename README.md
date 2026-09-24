@@ -95,6 +95,18 @@ Variáveis de ambiente do serviço:
 
 Falhas de Fonte e erros inesperados chegam como mensagem privada para o Revisor (no máximo uma por hora).
 
+## Segurança
+
+Qualquer pessoa pode falar com o bot, então a conversa é tratada como entrada hostil (auditoria de 2026-09-24):
+
+- **Sugestões** só são lidas em Sympla, Meetup, Even3 e Supertixs, inclusive a cada redirecionamento (sem acesso a rede interna), com limite de 2 MB e 15 s. A URL do Anúncio é sempre a página lida, nunca a que a página declara.
+- **Uma Sugestão de terceiros nunca altera** um Evento publicado ou na Fila; só o Revisor pode.
+- **Limites por pessoa:** até 3 links por mensagem e 5 Sugestões por hora; avisos de limite e boas-vindas, no máximo 1 por hora.
+- **Dados de páginas** são validados, textos cortados para caber no Telegram, datas a mais de 1 ano recusadas, e todo texto vai escapado no HTML das mensagens.
+- **Falhas isoladas:** um Post, pedido de revisão ou Sugestão problemático não trava os demais. O estado é gravado logo após cada envio e antes de abrir qualquer link, para que um reinício não repita mensagens.
+- **Decisões da Fila** só valem vindas do `TELEGRAM_REVISOR_ID`.
+- **Imagens Docker e actions** fixadas por digest/SHA; o workflow tem só permissão de leitura. O container roda como root porque o Railway monta o volume como root.
+
 ## Decisões tomadas
 
 - **Canal ou grupo?** Canal + grupo de discussão vinculado.

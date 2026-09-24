@@ -34,8 +34,6 @@ SEMENTE = Path("estado/estado.json")
 def main() -> int:
     caminho = Path(os.environ.get("RADAR_ESTADO", "estado/estado.json"))
     _semear(caminho)
-    # O Railway encerra com SIGTERM a cada deploy; virar SystemExit faz os finally gravarem o estado.
-    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
     with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30, follow_redirects=True) as http:
         saidas = _saidas(http)
@@ -46,7 +44,11 @@ def main() -> int:
             print("TELEGRAM_REVISOR_ID ausente: a Fila de revisão acumula sem pedir revisão.", file=sys.stderr)
         if "--uma-vez" in sys.argv:
             return _uma_vez(saidas, http, caminho, salvar=True)
-        Servico(fontes.todas(), http, saidas, caminho).rodar()
+        servico = Servico(fontes.todas(), http, saidas, caminho)
+        # O Railway encerra com SIGTERM a cada deploy: o loop termina o passo em curso (no
+        # máximo o tempo do long polling) e sai, sem cortar um envio no meio.
+        signal.signal(signal.SIGTERM, lambda *_: setattr(servico, "parar", True))
+        servico.rodar()
     return 0
 
 

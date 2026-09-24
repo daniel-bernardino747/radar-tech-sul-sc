@@ -19,9 +19,10 @@ def test_le_ical_real(fixtures):
 def test_jsonld_da_pagina_do_evento(fixtures):
     html = (fixtures / "meetup_evento_criciumaops.html").read_text(encoding="utf-8")
     [ev] = eventos_jsonld(html)
-    a = anuncio_de_jsonld(ev, "meetup-criciumaops", "https://fallback")
+    a = anuncio_de_jsonld(ev, "meetup-criciumaops", "https://www.meetup.com/criciumaops/events/315515560/")
     assert a.titulo.startswith("6° Meetup")
-    assert a.url == "https://www.meetup.com/criciumaops/events/315515560/"
+    # A URL é sempre a da página lida, nunca a declarada no JSON-LD.
+    assert anuncio_de_jsonld(ev, "x", "https://pagina-lida").url == "https://pagina-lida"
     assert a.inicio == datetime.fromisoformat("2026-07-25T09:00:00-03:00")
     assert a.local == "CRIO - Centro de Inovação Criciúma"
     assert a.cidade == "Criciúma"

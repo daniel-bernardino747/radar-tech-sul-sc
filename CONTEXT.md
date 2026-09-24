@@ -30,7 +30,7 @@ Fonte que pode trazer algo que não é Evento, ainda que raramente (ex.: busca p
 _Avoid_: Fonte genérica, fonte pública
 
 **Sugestão**:
-Link de um Anúncio enviado por qualquer pessoa ao Radar em conversa privada. Entra na Fila de revisão como um Anúncio de Fonte aberta.
+Link de um Anúncio enviado por qualquer pessoa ao Radar em conversa privada. Entra na Fila de revisão como um Anúncio de Fonte aberta. Só links de sites conhecidos (Sympla, Meetup, Even3, Supertixs) são lidos; os demais chegam ao Revisor apenas como link. Uma Sugestão nunca altera um Evento já publicado ou na Fila, a menos que venha do próprio Revisor.
 _Avoid_: Cadastro, submissão, indicação
 
 **Fila de revisão**:

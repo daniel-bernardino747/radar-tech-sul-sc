@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timedelta
 from enum import StrEnum
 from zoneinfo import ZoneInfo
 
@@ -91,6 +91,33 @@ class ItemFila:
     evento: Evento
     mensagem_id: int | None = None  # a mensagem com os botões, na conversa do Revisor
     sugerido_por: int | None = None  # conversa de quem mandou a Sugestão
+
+
+# Anúncios podem vir de páginas de qualquer um (Sugestões): textos são cortados para
+# caber nas mensagens do Telegram (limite de 4096 caracteres) e dados absurdos, recusados.
+LIMITES_DE_TEXTO = {"titulo": 200, "local": 120, "cidade": 60, "organizador": 120, "preco": 40}
+MAX_URL = 500
+HORIZONTE = timedelta(days=365)
+
+
+def sanear(a: Anuncio) -> Anuncio:
+    return replace(a, **{campo: _cortar(getattr(a, campo), n) for campo, n in LIMITES_DE_TEXTO.items()})
+
+
+def _cortar(texto: str | None, limite: int) -> str | None:
+    if texto is None or len(texto) <= limite:
+        return texto
+    return texto[: limite - 1] + "…"
+
+
+def plausivel(a: Anuncio, agora: datetime) -> bool:
+    """Datas dentro de um ano e URLs de tamanho razoável."""
+    return (
+        len(a.url) <= MAX_URL
+        and len(a.link_inscricao or "") <= MAX_URL
+        and a.inicio <= agora + HORIZONTE
+        and (a.fim is None or a.inicio <= a.fim <= a.inicio + HORIZONTE)
+    )
 
 
 def eh_elegivel(a: Anuncio) -> bool:
@@ -196,5 +223,5 @@ def aplicar(e: Evento, a: Anuncio) -> Mudanca:
 
 
 __all__ = [
-    "Anuncio", "Evento", "ItemFila", "Mudanca", "Status", "aplicar", "eh_elegivel", "mesmo_evento",
+    "Anuncio", "Evento", "ItemFila", "Mudanca", "plausivel", "sanear", "Status", "aplicar", "eh_elegivel", "mesmo_evento",
 ]

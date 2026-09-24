@@ -1,5 +1,6 @@
 """Bot API: publicação no Canal e conversa privada (Revisor e Sugestões)."""
 
+import time
 from typing import Protocol
 
 import httpx
@@ -44,8 +45,14 @@ class _Bot:
 
     def _chamar(self, metodo: str, corpo: dict, timeout: float | None = None) -> dict | list | bool:
         extra = {"timeout": timeout} if timeout else {}
-        resposta = self._http.post(f"{self._base}/{metodo}", json=corpo, **extra)
-        dado = resposta.json()
+        for tentativa in range(2):
+            resposta = self._http.post(f"{self._base}/{metodo}", json=corpo, **extra)
+            dado = resposta.json()
+            espera = (dado.get("parameters") or {}).get("retry_after")
+            if dado.get("error_code") == 429 and espera and tentativa == 0:
+                time.sleep(min(espera, 30))  # limite de envio do Telegram: espera e tenta uma vez mais
+                continue
+            break
         if not dado.get("ok"):
             raise ErroTelegram(f"{metodo}: {dado.get('description')}")
         return dado["result"]

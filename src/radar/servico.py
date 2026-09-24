@@ -6,11 +6,11 @@ Um único loop, para que nada mexa no estado ao mesmo tempo:
 3. grava o estado se algo mudou.
 """
 
-import sys
 import time as relogio_do_sistema
 import traceback
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, time, timedelta
+from html import escape
 from pathlib import Path
 
 import httpx
@@ -19,10 +19,10 @@ from radar import ciclo, estado
 from radar.dominio import FUSO
 from radar.fontes import Fonte
 from radar.fontes.links import ler_link
-from radar.revisao import Saidas
+from radar.revisao import Limites, Saidas, avisar
 
 HORARIOS_DE_COLETA = (time(8), time(18))
-ESPERA = 50  # segundos de long polling; também é o intervalo máximo entre checagens de Lembrete e Agenda
+ESPERA = 25  # segundos de long polling; também é o intervalo máximo entre checagens de Lembrete e Agenda
 INTERVALO_ENTRE_ALERTAS = timedelta(hours=1)
 PAUSA_APOS_ERRO = 10
 
@@ -59,15 +59,18 @@ class Servico:
         self.estado = estado.carregar(caminho)
         self._salvo = estado.serializar(self.estado)
         self._ultimo_alerta: datetime | None = None
+        self.limites = Limites()
+        self.parar = False
+        saidas.persistir = self.salvar
 
     def rodar(self) -> None:
         print(f"Radar no ar. Coletas às {', '.join(f'{h:%H:%M}' for h in HORARIOS_DE_COLETA)}.", flush=True)
-        while True:
+        while not self.parar:
             try:
                 self.passo()
             except Exception as erro:
                 traceback.print_exc()
-                self._alertar(f"⚠️ Erro no Radar: {erro!r}")
+                self._alertar(f"⚠️ Erro no Radar: {escape(repr(erro))}")
                 relogio_do_sistema.sleep(PAUSA_APOS_ERRO)
             finally:
                 self.salvar()
@@ -78,12 +81,13 @@ class Servico:
             self.coletar(agora)
         ciclo.divulgar(self.estado, self.saidas, agora)
         self.salvar()
-        ciclo.atender(self.estado, self.http, self.saidas, self.agora(), self.ler, espera)
+        ciclo.atender(self.estado, self.http, self.saidas, self.agora(), self.limites, self.ler, espera)
 
     def coletar(self, agora: datetime) -> None:
         print(f"Coletando ({agora.astimezone(FUSO):%d/%m %H:%M})...", flush=True)
         # Marca antes: se a coleta quebrar no meio, não é refeita a cada minuto, só no próximo horário.
         self.estado.ultima_coleta = agora
+        self.salvar()
         falhas = ciclo.coletar(self.fontes, self.http, self.saidas, self.estado, agora)
         publicados = sum(e.post_id is not None for e in self.estado.eventos)
         print(f"{len(self.estado.eventos)} Eventos, {publicados} com Post, {len(self.estado.fila)} na Fila.", flush=True)
@@ -104,7 +108,4 @@ class Servico:
         if self._ultimo_alerta and agora - self._ultimo_alerta < INTERVALO_ENTRE_ALERTAS:
             return
         self._ultimo_alerta = agora
-        try:
-            self.saidas.conversa.responder(self.saidas.revisor_id, texto)
-        except Exception:
-            print("Não consegui alertar o Revisor.", file=sys.stderr)
+        avisar(self.saidas, self.saidas.revisor_id, texto)
