@@ -9,11 +9,10 @@ Variáveis de ambiente:
   TELEGRAM_BOT_TOKEN    token do bot
   TELEGRAM_CANAL_ID     @usuario ou id numérico do Canal
   TELEGRAM_REVISOR_ID   id numérico do Revisor no Telegram; sem ele, a Fila acumula sem pedir revisão
-  RADAR_ESTADO          arquivo de estado (padrão: estado/estado.json; no Railway, /data/estado.json)
+  RADAR_ESTADO          arquivo de estado (padrão: estado/estado.json, fora do Git; no Railway, /data/estado.json)
 """
 
 import os
-import shutil
 import signal
 import sys
 from datetime import UTC, datetime
@@ -27,8 +26,6 @@ from radar.servico import Servico
 from radar.telegram import CanalDeTeste, CanalTelegram, ConversaDeTeste, ConversaTelegram
 
 USER_AGENT = "Mozilla/5.0 (compatible; RadarTechSulSC/0.1; +https://github.com/daniel-bernardino747/radar-tech-sul-sc)"
-# Estado da época do GitHub Actions, versionado no repo: semente do primeiro boot no Railway.
-SEMENTE = Path("estado/estado.json")
 
 
 def main() -> int:
@@ -36,7 +33,6 @@ def main() -> int:
     if erro := checar_volume(caminho, os.environ):
         print(erro, file=sys.stderr)
         return 2
-    _semear(caminho)
 
     with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30, follow_redirects=True) as http:
         saidas = _saidas(http)
@@ -80,13 +76,6 @@ def checar_volume(caminho: Path, ambiente) -> str | None:
     if not caminho.resolve().is_relative_to(Path(volume).resolve()):
         return f"RADAR_ESTADO ({caminho}) está fora do volume montado em {volume}: o estado se perderia a cada deploy."
     return None
-
-
-def _semear(caminho: Path) -> None:
-    if not caminho.exists() and SEMENTE.exists() and caminho.resolve() != SEMENTE.resolve():
-        caminho.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(SEMENTE, caminho)
-        print(f"Estado inicial copiado de {SEMENTE} para {caminho}.", flush=True)
 
 
 def _saidas(http: httpx.Client) -> Saidas:

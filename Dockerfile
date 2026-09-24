@@ -11,8 +11,6 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
-# Semente do primeiro boot: o estado da época do GitHub Actions (ADR 0003).
-COPY estado ./estado
 RUN uv sync --frozen --no-dev
 
 # Roda como root de propósito: o Railway monta o volume /data como root, e um usuário sem

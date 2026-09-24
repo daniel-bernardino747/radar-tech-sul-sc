@@ -91,7 +91,7 @@ Variáveis de ambiente do serviço:
 - `TELEGRAM_BOT_TOKEN`: token do bot
 - `TELEGRAM_CANAL_ID`: `@nome` do Canal (ou id numérico, se privado)
 - `TELEGRAM_REVISOR_ID`: id numérico do Revisor. Mande qualquer mensagem ao bot e ele responde com o seu id. Sem essa variável, a Fila de revisão acumula sem pedir revisão.
-- `RADAR_ESTADO=/data/estado.json`: arquivo de estado, num volume montado em `/data`. No primeiro boot, é copiado de `estado/estado.json` do repositório.
+- `RADAR_ESTADO=/data/estado.json`: arquivo de estado, num volume montado em `/data`.
 - `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=90`: tempo entre o aviso de desligamento (SIGTERM) e o encerramento forçado num deploy, para o Radar terminar o passo em curso.
 
 Falhas de Fonte e erros inesperados chegam como mensagem privada para o Revisor (no máximo uma por hora).
