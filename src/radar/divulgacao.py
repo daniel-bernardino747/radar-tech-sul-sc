@@ -69,8 +69,13 @@ def publicar_agenda(estado: Estado, canal: Canal, agora: datetime) -> None:
          and inicio <= e.inicio < inicio + timedelta(days=7)),
         key=lambda e: e.inicio,
     )
+    if estado.agenda_fixada is not None:
+        canal.desafixar(estado.agenda_fixada)
+        estado.agenda_fixada = None
     if da_semana:
-        canal.publicar(texto_agenda(segunda, da_semana, canal))
+        post_id = canal.publicar(texto_agenda(segunda, da_semana, canal))
+        canal.fixar(post_id)
+        estado.agenda_fixada = post_id
 
 
 def texto_agenda(segunda: date, eventos: list[Evento], canal: Canal) -> str:

@@ -10,6 +10,7 @@ from radar.estado import Estado
 @dataclass
 class CanalFalso:
     publicados: list[tuple[str, int | None]] = field(default_factory=list)
+    fixados: set[int] = field(default_factory=set)
 
     def publicar(self, texto, resposta_a=None):
         self.publicados.append((texto, resposta_a))
@@ -20,6 +21,12 @@ class CanalFalso:
 
     def link_do_post(self, post_id):
         return f"https://t.me/radar/{post_id}"
+
+    def fixar(self, post_id):
+        self.fixados.add(post_id)
+
+    def desafixar(self, post_id):
+        self.fixados.discard(post_id)
 
 
 def publicado(post_id=1, publicado_em=None, **campos) -> Evento:
@@ -107,3 +114,18 @@ class TestAgendaDaSemana:
         est, canal = Estado(), CanalFalso()
         publicar_agenda(est, canal, em(12, 8, 17))
         assert canal.publicados == [] and est.ultima_agenda == "2026-10-12"
+
+    def test_fixa_a_nova_e_desafixa_a_anterior(self):
+        est = Estado(eventos=[publicado(post_id=1, inicio=em(14, 19)), publicado(post_id=2, inicio=em(21, 19))])
+        canal = CanalFalso()
+        publicar_agenda(est, canal, em(12, 8, 17))
+        assert canal.fixados == {501} and est.agenda_fixada == 501
+        publicar_agenda(est, canal, em(19, 8, 17))
+        assert canal.fixados == {502} and est.agenda_fixada == 502
+
+    def test_semana_vazia_desafixa_a_anterior(self):
+        est = Estado(eventos=[publicado(inicio=em(14, 19))])
+        canal = CanalFalso()
+        publicar_agenda(est, canal, em(12, 8, 17))
+        publicar_agenda(est, canal, em(19, 8, 17))
+        assert canal.fixados == set() and est.agenda_fixada is None

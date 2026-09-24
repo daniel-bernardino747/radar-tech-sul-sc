@@ -44,6 +44,12 @@ class CanalFalso:
     def link_do_post(self, post_id):
         return f"https://t.me/radar/{post_id}"
 
+    def fixar(self, post_id):
+        pass
+
+    def desafixar(self, post_id):
+        pass
+
 
 @dataclass
 class ConversaFalsa:

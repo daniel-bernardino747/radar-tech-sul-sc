@@ -17,6 +17,8 @@ class Estado:
     offset_telegram: int = 0
     # Segunda-feira (AAAA-MM-DD) da última Agenda da semana publicada.
     ultima_agenda: str | None = None
+    # Post da Agenda da semana fixado no Canal, para desafixar quando vier a próxima.
+    agenda_fixada: int | None = None
 
 
 def carregar(caminho: Path) -> Estado:
@@ -29,6 +31,7 @@ def carregar(caminho: Path) -> Estado:
         rejeitados=[_evento(e) for e in bruto.get("rejeitados", [])],
         offset_telegram=bruto.get("offset_telegram", 0),
         ultima_agenda=bruto.get("ultima_agenda"),
+        agenda_fixada=bruto.get("agenda_fixada"),
     )
 
 
@@ -37,6 +40,7 @@ def salvar(estado: Estado, caminho: Path) -> None:
     conteudo = {
         "offset_telegram": estado.offset_telegram,
         "ultima_agenda": estado.ultima_agenda,
+        "agenda_fixada": estado.agenda_fixada,
         "eventos": [asdict(e) for e in _ordenados(estado.eventos)],
         "fila": [asdict(i) for i in sorted(estado.fila, key=lambda i: (i.evento.inicio, i.evento.id))],
         "rejeitados": [asdict(e) for e in _ordenados(estado.rejeitados)],

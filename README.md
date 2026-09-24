@@ -64,7 +64,7 @@ Nenhuma Fonte tem API pública útil para descoberta: a API da Sympla só lista 
 - [x] Fila de revisão no chat privado com o bot (aprovar/rejeitar; rejeição permanente; expira após a data)
 - [x] Sugestão por link
 - [x] Publicação no Canal, com edição do Post em alterações e cancelamentos
-- [x] Lembrete na véspera (a partir das 10h; sexta para eventos de segunda) e Agenda da semana às segundas (a partir das 8h)
+- [x] Lembrete na véspera (a partir das 10h; sexta para eventos de segunda) e Agenda da semana às segundas (a partir das 8h, fixada no Canal no lugar da anterior)
 - [x] Execução agendada no GitHub Actions (~1h), em Python, com estado no repositório ([ADR 0001](./docs/adr/0001-github-actions-com-estado-no-repo.md))
 
 ## Fora do escopo (por ora)

@@ -12,6 +12,10 @@ class Canal(Protocol):
 
     def link_do_post(self, post_id: int) -> str: ...
 
+    def fixar(self, post_id: int) -> None: ...
+
+    def desafixar(self, post_id: int) -> None: ...
+
 
 class Conversa(Protocol):
     """Conversas privadas com o bot: o Revisor decide a Fila, qualquer pessoa manda Sugestões."""
@@ -71,6 +75,15 @@ class CanalTelegram(_Bot):
             return f"https://t.me/{canal[1:]}/{post_id}"
         return f"https://t.me/c/{canal.removeprefix('-100')}/{post_id}"  # Canal privado
 
+    def fixar(self, post_id: int) -> None:
+        self._chamar("pinChatMessage", {"chat_id": self._chat_id, "message_id": post_id, "disable_notification": True})
+
+    def desafixar(self, post_id: int) -> None:
+        try:
+            self._chamar("unpinChatMessage", {"chat_id": self._chat_id, "message_id": post_id})
+        except ErroTelegram:
+            pass  # já desafixada à mão, ou apagada
+
     def verificar(self) -> str:
         """Confirma, sem postar, que o bot pode publicar no Canal. Devolve o nome do Canal."""
         bot = self._chamar("getMe", {})
@@ -127,6 +140,12 @@ class CanalDeTeste:
 
     def link_do_post(self, post_id: int) -> str:
         return f"https://t.me/teste/{post_id}"
+
+    def fixar(self, post_id: int) -> None:
+        print(f"[fixa post {post_id}]\n")
+
+    def desafixar(self, post_id: int) -> None:
+        print(f"[desafixa post {post_id}]\n")
 
 
 class ConversaDeTeste:
