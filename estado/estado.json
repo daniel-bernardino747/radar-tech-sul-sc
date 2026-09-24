@@ -1,5 +1,6 @@
 {
   "offset_telegram": 81911922,
+  "ultima_agenda": null,
   "eventos": [
     {
       "id": "d90b1c13c8f1",
@@ -18,6 +19,7 @@
       ],
       "status": "agendado",
       "post_id": 3,
+      "publicado_em": null,
       "lembrete_enviado": false
     },
     {
@@ -37,6 +39,7 @@
       ],
       "status": "agendado",
       "post_id": 4,
+      "publicado_em": null,
       "lembrete_enviado": false
     },
     {
@@ -56,6 +59,7 @@
       ],
       "status": "agendado",
       "post_id": 5,
+      "publicado_em": null,
       "lembrete_enviado": false
     }
   ],
