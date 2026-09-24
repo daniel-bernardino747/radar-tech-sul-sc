@@ -40,7 +40,7 @@ Formato: **canal** (só o bot publica) com **grupo de discussão vinculado** par
 |---|---|---|
 | Meetup CriciumaOps | confiável | iCal do grupo |
 | Meetup Criciúma Dev | confiável | iCal do grupo |
-| Agenda do CRIO | aberta, sem filtro de tema (o CRIO também recebe eventos de outras áreas) | HTML, seguindo os links para Sympla/Even3/Supertixs |
+| ~~Agenda do CRIO~~ (desativada) | aberta, sem filtro de tema (o CRIO também recebe eventos de outras áreas) | HTML, seguindo os links para Sympla/Even3/Supertixs |
 | Portal de eventos da SATC | confiável | HTML/XHR, com o RSS da UniSATC como reserva |
 | Sympla, busca por cidade (a de Criciúma já cobre a Região inteira, por raio) | aberta | JSON embutido na página + página do evento |
 | Agenda da ACATE | aberta | HTML |
@@ -49,13 +49,15 @@ Formato: **canal** (só o bot publica) com **grupo de discussão vinculado** par
 
 Fontes **confiáveis** são publicadas automaticamente. Fontes **abertas** passam pela Fila de revisão.
 
+A agenda do CRIO tem coletor pronto, mas está desativada: o servidor responde 403 a IPs do GitHub Actions (bloqueio por IP, não por User-Agent). Seus eventos de tecnologia costumam estar também na Sympla; o resto chega por Sugestão.
+
 Fora do MVP: grupo de WhatsApp e Instagram (ver [ADR 0002](./docs/adr/0002-sem-whatsapp-e-instagram-como-fonte.md)), SC Mais Inovação (fora do ar em 2026-09), perfil de produtor do Criciúma Dev na Sympla (carrega via JS; já coberto por outras Fontes).
 
 Nenhuma Fonte tem API pública útil para descoberta: a API da Sympla só lista eventos do próprio produtor, e a do Meetup exige Meetup Pro. Os dados da Sympla incluem e-mail de organizadores, que devem ser descartados na coleta.
 
 ## Escopo do MVP
 
-- [ ] Coletor por Fonte (tabela acima): feito para Meetup, Sympla e CRIO
+- [ ] Coletor por Fonte (tabela acima): feito para Meetup e Sympla (CRIO pronto, mas desativado)
 - [x] Modelo de Evento normalizado, com Status (agendado / alterado / cancelado)
 - [x] Filtro de relevância (tech + Região, sem cursos)
 - [x] Deduplicação entre Anúncios
