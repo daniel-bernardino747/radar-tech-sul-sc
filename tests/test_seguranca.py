@@ -162,3 +162,37 @@ class TestFalhaIsolada:
         fonte = FonteFixa([anuncio(url="https://a"), anuncio(url="https://b", inicio=em(13, 19), fim=em(13, 21))])
         ciclo.coletar([fonte], httpx.Client(), saidas, estado.Estado(), em(1, 12))
         assert len(chamadas) >= 2
+
+
+class TestLimitesGlobais:
+    def test_varias_contas_nao_passam_do_teto_global(self):
+        from radar.revisao import SUGESTOES_POR_HORA_NO_TOTAL
+
+        links = {f"https://s/{i}": anuncio(url=f"https://s/{i}", titulo=f"E{i}", inicio=em(2, 19, i % 60), fim=None)
+                 for i in range(40)}
+        r = Radar(links=links)
+        mensagens = [mensagem(u, de=1000 + n, update_id=n) for n, u in enumerate(links)]
+        r.rodar(chegando=mensagens)
+        # o lote também é limitado; somando lotes, nunca passa do teto global por hora
+        assert len(r.est.fila) <= SUGESTOES_POR_HORA_NO_TOTAL
+        assert len(r.est.fila) == 10  # MAX_SUGESTOES_POR_LOTE
+
+    def test_repasses_ao_revisor_tem_teto_e_url_cortada(self):
+        from radar.revisao import REPASSES_POR_HORA
+
+        r = Radar()
+        mensagens = [mensagem(f"https://x.com/{n}" + "a" * 4000, de=2000 + n, update_id=n) for n in range(30)]
+        r.rodar(chegando=mensagens)
+        repasses = [t for chat, t in r.conversa.respostas if chat == REVISOR]
+        assert len(repasses) == REPASSES_POR_HORA and all(len(t) < 400 for t in repasses)
+
+
+class TestPostQueNuncaSai:
+    def test_desiste_depois_de_5_tentativas_e_avisa(self):
+        canal, conversa, est = CanalMeioQuebrado(), ConversaFalsa(), estado.Estado()
+        saidas = Saidas(canal, conversa, REVISOR)
+        fonte = FonteFixa([anuncio(titulo="quebra")])
+        for _ in range(8):
+            ciclo.coletar([fonte], httpx.Client(), saidas, est, em(1, 12))
+        assert est.eventos[0].tentativas_de_post == 5
+        assert len([t for _, t in conversa.respostas if "Desisti" in t]) == 1

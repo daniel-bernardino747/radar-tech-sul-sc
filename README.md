@@ -92,6 +92,7 @@ Variáveis de ambiente do serviço:
 - `TELEGRAM_CANAL_ID`: `@nome` do Canal (ou id numérico, se privado)
 - `TELEGRAM_REVISOR_ID`: id numérico do Revisor. Mande qualquer mensagem ao bot e ele responde com o seu id. Sem essa variável, a Fila de revisão acumula sem pedir revisão.
 - `RADAR_ESTADO=/data/estado.json`: arquivo de estado, num volume montado em `/data`. No primeiro boot, é copiado de `estado/estado.json` do repositório.
+- `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=90`: tempo entre o aviso de desligamento (SIGTERM) e o encerramento forçado num deploy, para o Radar terminar o passo em curso.
 
 Falhas de Fonte e erros inesperados chegam como mensagem privada para o Revisor (no máximo uma por hora).
 
@@ -101,7 +102,8 @@ Qualquer pessoa pode falar com o bot, então a conversa é tratada como entrada 
 
 - **Sugestões** só são lidas em Sympla, Meetup, Even3 e Supertixs, inclusive a cada redirecionamento (sem acesso a rede interna), com limite de 2 MB e 15 s. A URL do Anúncio é sempre a página lida, nunca a que a página declara.
 - **Uma Sugestão de terceiros nunca altera** um Evento publicado ou na Fila; só o Revisor pode.
-- **Limites por pessoa:** até 3 links por mensagem e 5 Sugestões por hora; avisos de limite e boas-vindas, no máximo 1 por hora.
+- **Limites:** até 3 links por mensagem e 5 Sugestões por hora por pessoa; no total, 30 Sugestões por hora, 10 por lote e 10 repasses de links ilegíveis ao Revisor por hora. Avisos de limite e boas-vindas, no máximo 1 por hora por pessoa.
+- **Post que falha** é tentado até 5 vezes; depois o Revisor é avisado.
 - **Dados de páginas** são validados, textos cortados para caber no Telegram, datas a mais de 1 ano recusadas, e todo texto vai escapado no HTML das mensagens.
 - **Falhas isoladas:** um Post, pedido de revisão ou Sugestão problemático não trava os demais. O estado é gravado logo após cada envio e antes de abrir qualquer link, para que um reinício não repita mensagens.
 - **Decisões da Fila** só valem vindas do `TELEGRAM_REVISOR_ID`.

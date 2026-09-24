@@ -24,7 +24,9 @@ BOAS_VINDAS = (
     "Seu id no Telegram: <code>{id}</code>"
 )
 MAX_LINKS_POR_MENSAGEM = 3
-SUGESTOES_POR_HORA = 5
+SUGESTOES_POR_HORA = 5  # por pessoa
+SUGESTOES_POR_HORA_NO_TOTAL = 30
+REPASSES_POR_HORA = 10  # links ilegíveis repassados ao Revisor, somando todo mundo
 
 _URL = re.compile(r"https?://\S+")
 
@@ -65,6 +67,12 @@ class Cota:
 class Limites:
     sugestoes: Cota = field(default_factory=lambda: Cota(SUGESTOES_POR_HORA))
     avisos: Cota = field(default_factory=lambda: Cota(1))  # "você mandou demais" e boas-vindas
+    # Tetos globais (chave TODOS): várias contas juntas não passam disso.
+    sugestoes_de_todos: Cota = field(default_factory=lambda: Cota(SUGESTOES_POR_HORA_NO_TOTAL))
+    repasses_ao_revisor: Cota = field(default_factory=lambda: Cota(REPASSES_POR_HORA))
+
+
+TODOS = 0  # chave das cotas globais
 
 
 def processar_conversas(
@@ -96,6 +104,10 @@ def _ler_mensagem(msg: dict, saidas: Saidas, agora: datetime, limites: Limites) 
         if not limites.sugestoes.permite(chat_id, agora):
             if limites.avisos.permite(chat_id, agora):
                 avisar(saidas, chat_id, "Recebi muitas sugestões suas na última hora. Tente de novo mais tarde.")
+            break
+        if not limites.sugestoes_de_todos.permite(TODOS, agora):
+            if limites.avisos.permite(chat_id, agora):
+                avisar(saidas, chat_id, "Estou recebendo muitas sugestões agora. Tente de novo mais tarde.")
             break
         aceitas.append(Sugestao(chat_id, url))
     if len(urls) > MAX_LINKS_POR_MENSAGEM and aceitas:

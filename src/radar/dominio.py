@@ -59,6 +59,7 @@ class Evento:
     publicado_em: datetime | None = None
     lembrete_enviado: bool = False
     curso: bool = False
+    tentativas_de_post: int = 0
 
     @classmethod
     def de_anuncio(cls, a: Anuncio) -> Evento:

@@ -20,10 +20,12 @@ from radar.estado import Estado
 from radar.fontes import Fonte
 from radar.fontes.links import ler_link
 from radar.post import texto_mudanca, texto_post
-from radar.revisao import Limites, Saidas, Sugestao, avisar
+from radar.revisao import TODOS, Limites, Saidas, Sugestao, avisar
 from radar.telegram import ErroTelegram
 
 RETENCAO = timedelta(days=30)
+MAX_SUGESTOES_POR_LOTE = 10
+MAX_TENTATIVAS_DE_POST = 5
 
 LerLink = Callable[[httpx.Client, str, str], Anuncio | None]
 
@@ -67,12 +69,16 @@ def atender(
     # Grava o ponteiro antes de abrir qualquer link: se um link derrubar o processo, a
     # mesma mensagem não volta a ser processada no reinício.
     saidas.persistir()
-    for sugestao in sugestoes:
+    for n, sugestao in enumerate(sugestoes):
+        if n >= MAX_SUGESTOES_POR_LOTE:  # cada link pode levar até 15 s; o bot não fica surdo por minutos
+            avisar(saidas, sugestao.chat_id, "Estou recebendo muitas sugestões agora. Tente de novo mais tarde.")
+            continue
         try:
-            receber_sugestao(estado, sugestao, http, saidas, agora, ler)
+            receber_sugestao(estado, sugestao, http, saidas, agora, ler, limites)
         except Exception:
             traceback.print_exc()
             avisar(saidas, sugestao.chat_id, "Não consegui processar esse link.")
+        saidas.persistir()  # quem ouviu "Recebido!" não pode perder o item num reinício
     _encaminhar(estado, saidas, agora)
 
 
@@ -173,14 +179,23 @@ RESPOSTAS = {
 
 
 def receber_sugestao(
-    estado: Estado, s: Sugestao, http: httpx.Client, saidas: Saidas, agora: datetime, ler: LerLink
+    estado: Estado,
+    s: Sugestao,
+    http: httpx.Client,
+    saidas: Saidas,
+    agora: datetime,
+    ler: LerLink,
+    limites: Limites | None = None,
 ) -> None:
+    limites = limites or Limites()
     anuncio = ler(http, s.url, "sugestao")
     if anuncio is None:
         avisar(saidas, s.chat_id, "Não consegui ler esse link automaticamente (só leio Sympla, Meetup, Even3 "
                                   "e Supertixs). Vou repassar para o Revisor.")
-        if saidas.revisor_id is not None and s.chat_id != saidas.revisor_id:
-            avisar(saidas, saidas.revisor_id, f"💡 Sugestão que não consegui ler: {escape(s.url)}")
+        repassa = saidas.revisor_id is not None and s.chat_id != saidas.revisor_id
+        if repassa and limites.repasses_ao_revisor.permite(TODOS, agora):
+            url = s.url if len(s.url) <= 300 else s.url[:299] + "…"
+            avisar(saidas, saidas.revisor_id, f"💡 Sugestão que não consegui ler: {escape(url)}")
         return
     if (anuncio.fim or anuncio.inicio) < agora:
         avisar(saidas, s.chat_id, "Esse evento já aconteceu.")
@@ -206,11 +221,16 @@ def _motivo_inelegivel(a: Anuncio) -> str:
 
 def publicar_pendentes(estado: Estado, saidas: Saidas, agora: datetime) -> None:
     for e in sorted(estado.eventos, key=lambda e: e.inicio):
-        if e.post_id is None:
+        if e.post_id is None and e.tentativas_de_post < MAX_TENTATIVAS_DE_POST:
             try:
                 e.post_id = saidas.canal.publicar(texto_post(e))
             except ErroTelegram as erro:  # um Evento problemático não trava os outros
                 print(f"Post de {e.id} falhou: {erro}", file=sys.stderr)
+                e.tentativas_de_post += 1
+                if e.tentativas_de_post == MAX_TENTATIVAS_DE_POST and saidas.revisor_id is not None:
+                    avisar(saidas, saidas.revisor_id,
+                           f"⚠️ Desisti de publicar <b>{escape(e.titulo)}</b> depois de "
+                           f"{MAX_TENTATIVAS_DE_POST} tentativas: {escape(str(erro))}")
                 continue
             e.publicado_em = agora
             saidas.persistir()
