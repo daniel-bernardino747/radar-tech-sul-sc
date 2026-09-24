@@ -20,8 +20,11 @@ class Fonte(Protocol):
 
 def todas() -> list[Fonte]:
     from radar.fontes.meetup import Meetup
+    from radar.fontes.sympla import Sympla
 
     return [
         Meetup(id="meetup-criciumaops", grupo="criciumaops"),
         Meetup(id="meetup-criciumadev", grupo="criciumadev"),
+        # A página de Criciúma já traz Tubarão, Araranguá e o resto da Região.
+        Sympla(id="sympla-criciuma", cidade="criciuma-sc"),
     ]

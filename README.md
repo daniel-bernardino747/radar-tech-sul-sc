@@ -42,7 +42,7 @@ Formato: **canal** (só o bot publica) com **grupo de discussão vinculado** par
 | Meetup Criciúma Dev | confiável | iCal do grupo |
 | Agenda do CRIO | confiável | HTML, seguindo os links para Sympla/Even3/Supertixs |
 | Portal de eventos da SATC | confiável | HTML/XHR, com o RSS da UniSATC como reserva |
-| Sympla, páginas de cidade (Criciúma, Tubarão, Araranguá, Içara) | aberta | JSON embutido na página |
+| Sympla, busca por cidade (a de Criciúma já cobre a Região inteira, por raio) | aberta | JSON embutido na página + página do evento |
 | Agenda da ACATE | aberta | HTML |
 | RSS de notícias da Unesc | aberta | RSS |
 | Sugestão por link (conversa privada com o bot) | aberta | segue o link |
@@ -55,12 +55,12 @@ Nenhuma Fonte tem API pública útil para descoberta: a API da Sympla só lista 
 
 ## Escopo do MVP
 
-- [ ] Coletor por Fonte (tabela acima): feito para os dois grupos do Meetup
+- [ ] Coletor por Fonte (tabela acima): feito para Meetup e Sympla
 - [x] Modelo de Evento normalizado, com Status (agendado / alterado / cancelado)
-- [ ] Filtro de relevância (tech + Região, sem cursos)
+- [x] Filtro de relevância (tech + Região, sem cursos)
 - [x] Deduplicação entre Anúncios
-- [ ] Fila de revisão no chat privado com o bot (aprovar/rejeitar; rejeição permanente; expira após a data)
-- [ ] Sugestão por link
+- [x] Fila de revisão no chat privado com o bot (aprovar/rejeitar; rejeição permanente; expira após a data)
+- [x] Sugestão por link
 - [x] Publicação no Canal, com edição do Post em alterações e cancelamentos
 - [ ] Lembrete na véspera e Agenda da semana às segundas
 - [x] Execução agendada no GitHub Actions (~1h), em Python, com estado no repositório ([ADR 0001](./docs/adr/0001-github-actions-com-estado-no-repo.md))
@@ -81,7 +81,13 @@ uv run pytest
 uv run python -m radar   # sem TELEGRAM_BOT_TOKEN: só imprime, não publica nem salva estado
 ```
 
-Em produção, o workflow `.github/workflows/radar.yml` roda um ciclo por hora e commita `estado/estado.json`. Ele precisa dos secrets `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CANAL_ID`.
+Em produção, o workflow `.github/workflows/radar.yml` roda um ciclo por hora e commita `estado/estado.json`. Ele precisa dos secrets:
+
+- `TELEGRAM_BOT_TOKEN`: token do bot
+- `TELEGRAM_CANAL_ID`: `@nome` do Canal (ou id numérico, se privado)
+- `TELEGRAM_REVISOR_ID`: id numérico do Revisor. Para descobrir, mande qualquer mensagem ao bot; na rodada seguinte ele responde com o seu id. Sem esse secret, a Fila de revisão acumula sem pedir revisão.
+
+Como o Radar roda de hora em hora, respostas do bot, Aprovações e Sugestões levam até 1h para serem processadas.
 
 ## Decisões tomadas
 

@@ -1,24 +1,45 @@
-"""Uma execução do Radar: coleta das Fontes, consolidação em Eventos e divulgação no Canal."""
+"""Uma execução do Radar: conversas, coleta, consolidação em Eventos e divulgação."""
 
 import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta
+from enum import Enum, auto
 
 import httpx
 
-from radar.dominio import Anuncio, Evento, aplicar, eh_elegivel, mesmo_evento
+from radar import revisao
+from radar.dominio import Anuncio, Evento, ItemFila, aplicar, eh_elegivel, mesmo_evento
 from radar.estado import Estado
 from radar.fontes import Fonte
+from radar.fontes.links import ler_link
 from radar.post import texto_mudanca, texto_post
-from radar.telegram import Canal
+from radar.revisao import Saidas, Sugestao
 
 RETENCAO = timedelta(days=30)
 
+LerLink = Callable[[httpx.Client, str, str], Anuncio | None]
+
+
+class Destino(Enum):
+    PUBLICACAO = auto()
+    FILA = auto()
+    JA_NO_RADAR = auto()
+    JA_NA_FILA = auto()
+    REJEITADO_ANTES = auto()
+    INELEGIVEL = auto()
+
 
 def executar(
-    fontes: Iterable[Fonte], http: httpx.Client, canal: Canal, estado: Estado, agora: datetime
+    fontes: Iterable[Fonte],
+    http: httpx.Client,
+    saidas: Saidas,
+    estado: Estado,
+    agora: datetime,
+    ler: LerLink = ler_link,
 ) -> list[str]:
     """Roda um ciclo e devolve os ids das Fontes que falharam."""
+    sugestoes = revisao.processar_conversas(estado, saidas)
+
     falhas = []
     for fonte in fontes:
         try:
@@ -28,33 +49,106 @@ def executar(
             falhas.append(fonte.id)
             continue
         for anuncio in anuncios:
-            consolidar(estado, anuncio, fonte.confiavel, canal)
-    publicar_pendentes(estado, canal)
+            consolidar(estado, anuncio, fonte.confiavel, saidas)
+
+    for sugestao in sugestoes:
+        receber_sugestao(estado, sugestao, http, saidas, agora, ler)
+
+    publicar_pendentes(estado, saidas)
+    revisao.expirar(estado, agora, saidas)
+    revisao.pedir_revisoes(estado, saidas)
     esquecer_antigos(estado, agora)
     return falhas
 
 
-def consolidar(estado: Estado, a: Anuncio, confiavel: bool, canal: Canal) -> None:
-    existente = next((e for e in estado.eventos if mesmo_evento(a, e)), None)
-    if existente is None:
-        # Fontes abertas vão para a Fila de revisão, que ainda não existe.
-        if confiavel and eh_elegivel(a) and not a.cancelado:
-            estado.eventos.append(Evento.de_anuncio(a))
-        return
+def consolidar(
+    estado: Estado, a: Anuncio, confiavel: bool, saidas: Saidas, sugerido_por: int | None = None
+) -> Destino:
+    if existente := next((e for e in estado.eventos if mesmo_evento(a, e)), None):
+        _atualizar(existente, a, saidas)
+        return Destino.JA_NO_RADAR
 
+    na_fila = next((i for i in estado.fila if mesmo_evento(a, i.evento)), None)
+    if na_fila and confiavel and not a.cancelado:
+        # Uma Fonte confiável confirmou o que estava esperando revisão.
+        estado.fila.remove(na_fila)
+        revisao.concluir(na_fila, "☑️ Publicado automaticamente: veio de uma Fonte confiável", saidas)
+        evento = Evento.de_anuncio(a)
+        evento.urls += [u for u in na_fila.evento.urls if u not in evento.urls]
+        estado.eventos.append(evento)
+        return Destino.PUBLICACAO
+    if na_fila:
+        aplicar(na_fila.evento, a)
+        return Destino.JA_NA_FILA
+
+    if any(mesmo_evento(a, r) for r in estado.rejeitados):
+        return Destino.REJEITADO_ANTES
+    if not eh_elegivel(a) or a.cancelado:
+        return Destino.INELEGIVEL
+    if confiavel:
+        estado.eventos.append(Evento.de_anuncio(a))
+        return Destino.PUBLICACAO
+    estado.fila.append(ItemFila(Evento.de_anuncio(a), sugerido_por=sugerido_por))
+    return Destino.FILA
+
+
+def _atualizar(existente: Evento, a: Anuncio, saidas: Saidas) -> None:
     mudanca = aplicar(existente, a)
     if existente.post_id is None or not mudanca.houve:
         return
-    canal.editar(existente.post_id, texto_post(existente))
+    saidas.canal.editar(existente.post_id, texto_post(existente))
     if mudanca.relevantes or mudanca.cancelou:
-        canal.publicar(texto_mudanca(existente, mudanca), resposta_a=existente.post_id)
+        saidas.canal.publicar(texto_mudanca(existente, mudanca), resposta_a=existente.post_id)
 
 
-def publicar_pendentes(estado: Estado, canal: Canal) -> None:
+RESPOSTAS = {
+    Destino.PUBLICACAO: "✅ Publicado no canal. Obrigado!",
+    Destino.FILA: "Recebido! Vai passar pela revisão antes de ir para o canal.",
+    Destino.JA_NO_RADAR: "Esse evento já está no Radar. Obrigado!",
+    Destino.JA_NA_FILA: "Esse evento já está esperando revisão. Obrigado!",
+    Destino.REJEITADO_ANTES: "Esse evento já foi avaliado e não entrou no Radar.",
+}
+
+
+def receber_sugestao(
+    estado: Estado, s: Sugestao, http: httpx.Client, saidas: Saidas, agora: datetime, ler: LerLink
+) -> None:
+    anuncio = ler(http, s.url, "sugestao")
+    if anuncio is None:
+        saidas.conversa.responder(s.chat_id, "Não consegui ler os dados desse link. Vou repassar para o Revisor.")
+        if saidas.revisor_id is not None and s.chat_id != saidas.revisor_id:
+            saidas.conversa.responder(saidas.revisor_id, f"💡 Sugestão que não consegui ler: {s.url}")
+        return
+    if (anuncio.fim or anuncio.inicio) < agora:
+        saidas.conversa.responder(s.chat_id, "Esse evento já aconteceu.")
+        return
+
+    # Sugestão do próprio Revisor dispensa revisão.
+    destino = consolidar(estado, anuncio, s.chat_id == saidas.revisor_id, saidas, sugerido_por=s.chat_id)
+    if destino is Destino.INELEGIVEL:
+        resposta = _motivo_inelegivel(anuncio)
+    else:
+        resposta = RESPOSTAS[destino]
+    saidas.conversa.responder(s.chat_id, resposta)
+
+
+def _motivo_inelegivel(a: Anuncio) -> str:
+    if a.cancelado:
+        return "Esse evento está cancelado."
+    if a.curso:
+        return "Cursos e treinamentos pagos não entram no Radar."
+    return "O Radar só divulga eventos no Sul de SC (AMREC, AMUREL e AMESC) ou online."
+
+
+def publicar_pendentes(estado: Estado, saidas: Saidas) -> None:
     for e in sorted(estado.eventos, key=lambda e: e.inicio):
         if e.post_id is None:
-            e.post_id = canal.publicar(texto_post(e))
+            e.post_id = saidas.canal.publicar(texto_post(e))
 
 
 def esquecer_antigos(estado: Estado, agora: datetime) -> None:
-    estado.eventos = [e for e in estado.eventos if (e.fim or e.inicio) > agora - RETENCAO]
+    def vigente(e: Evento) -> bool:
+        return (e.fim or e.inicio) > agora - RETENCAO
+
+    estado.eventos = [e for e in estado.eventos if vigente(e)]
+    estado.rejeitados = [e for e in estado.rejeitados if vigente(e)]

@@ -4,7 +4,7 @@ import json
 import re
 from datetime import datetime
 
-from radar.dominio import Anuncio
+from radar.dominio import FUSO, Anuncio
 
 _SCRIPT = re.compile(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', re.S | re.I)
 
@@ -41,8 +41,8 @@ def anuncio_de_jsonld(ev: dict, fonte: str, url: str) -> Anuncio:
         fonte=fonte,
         url=ev.get("url") or url,
         titulo=ev["name"].strip(),
-        inicio=datetime.fromisoformat(inicio_bruto),
-        fim=datetime.fromisoformat(ev["endDate"]) if ev.get("endDate") else None,
+        inicio=_data(inicio_bruto),
+        fim=_data_ou_nada(ev.get("endDate")),
         tem_horario=tem_horario,
         local=None if online else (local.get("name") or None),
         cidade=None if online else (endereco.get("addressLocality") or None),
@@ -50,3 +50,16 @@ def anuncio_de_jsonld(ev: dict, fonte: str, url: str) -> Anuncio:
         organizador=organizador.get("name") if isinstance(organizador, dict) else None,
         cancelado=ev.get("eventStatus", "").endswith("EventCancelled"),
     )
+
+
+def _data(texto: str) -> datetime:
+    valor = datetime.fromisoformat(texto)
+    return valor if valor.tzinfo else valor.replace(tzinfo=FUSO)
+
+
+def _data_ou_nada(texto: str | None) -> datetime | None:
+    """Algumas páginas (ex.: Even3) publicam endDate malformado; nesse caso, sem fim."""
+    try:
+        return _data(texto) if texto else None
+    except ValueError:
+        return None

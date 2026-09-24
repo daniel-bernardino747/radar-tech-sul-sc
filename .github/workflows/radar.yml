@@ -26,6 +26,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CANAL_ID: ${{ secrets.TELEGRAM_CANAL_ID }}
+          TELEGRAM_REVISOR_ID: ${{ secrets.TELEGRAM_REVISOR_ID }}
       - name: Salvar estado
         if: always()
         run: |

@@ -6,8 +6,11 @@ import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+from zoneinfo import ZoneInfo
 
 from radar.regiao import eh_da_regiao, normalizar
+
+FUSO = ZoneInfo("America/Sao_Paulo")
 
 
 class Status(StrEnum):
@@ -33,6 +36,7 @@ class Anuncio:
     preco: str | None = None
     link_inscricao: str | None = None
     cancelado: bool = False
+    curso: bool = False
 
 
 @dataclass
@@ -76,9 +80,22 @@ class Evento:
         return self.link_inscricao or self.urls[0]
 
 
+@dataclass
+class ItemFila:
+    """Um Evento de Fonte aberta ou Sugestão aguardando o Revisor."""
+
+    evento: Evento
+    mensagem_id: int | None = None  # a mensagem com os botões, na conversa do Revisor
+    sugerido_por: int | None = None  # conversa de quem mandou a Sugestão
+
+
 def eh_elegivel(a: Anuncio) -> bool:
-    """Presencial na Região, ou online. Online só chega aqui vindo de Organizador regional."""
-    return a.online or eh_da_regiao(a.cidade)
+    """Não é Curso e é presencial na Região ou online.
+
+    Se um Evento online é de Organizador regional, quem garante é a Fonte confiável
+    ou o Revisor.
+    """
+    return not a.curso and (a.online or eh_da_regiao(a.cidade))
 
 
 def mesmo_evento(a: Anuncio, e: Evento) -> bool:
@@ -87,7 +104,7 @@ def mesmo_evento(a: Anuncio, e: Evento) -> bool:
         return True
     if not (a.tem_horario and e.tem_horario):
         return False
-    if a.inicio.date() != e.inicio.date():
+    if a.inicio.astimezone(FUSO).date() != e.inicio.astimezone(FUSO).date():
         return False
     if not _mesmo_local(a, e):
         return False
@@ -175,5 +192,5 @@ def aplicar(e: Evento, a: Anuncio) -> Mudanca:
 
 
 __all__ = [
-    "Anuncio", "Evento", "Mudanca", "Status", "aplicar", "eh_elegivel", "mesmo_evento",
+    "Anuncio", "Evento", "ItemFila", "Mudanca", "Status", "aplicar", "eh_elegivel", "mesmo_evento",
 ]
