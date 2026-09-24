@@ -59,7 +59,7 @@ class ConversaFalsa:
     respostas: list[tuple[int, str]] = field(default_factory=list)
     offsets: list[int] = field(default_factory=list)
 
-    def atualizacoes(self, offset):
+    def atualizacoes(self, offset, espera=0):
         self.offsets.append(offset)
         chegando, self.chegando = self.chegando, []
         return chegando

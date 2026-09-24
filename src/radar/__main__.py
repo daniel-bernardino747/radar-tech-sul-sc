@@ -1,13 +1,20 @@
-"""python -m radar: roda um ciclo e sai.
+"""python -m radar: sobe o Radar como processo contínuo (ADR 0003).
+
+    python -m radar            serviço: conversa ao vivo, coleta às 8h e 18h
+    python -m radar --uma-vez  roda conversa, coleta e divulgação uma vez e sai
+
+Sem TELEGRAM_BOT_TOKEN, roda uma vez em modo de teste: imprime em vez de publicar e não salva.
 
 Variáveis de ambiente:
-  TELEGRAM_BOT_TOKEN    token do bot; sem ele, nada é publicado nem salvo (só impresso)
+  TELEGRAM_BOT_TOKEN    token do bot
   TELEGRAM_CANAL_ID     @usuario ou id numérico do Canal
   TELEGRAM_REVISOR_ID   id numérico do Revisor no Telegram; sem ele, a Fila acumula sem pedir revisão
-  RADAR_ESTADO          caminho do arquivo de estado (padrão: estado/estado.json)
+  RADAR_ESTADO          arquivo de estado (padrão: estado/estado.json; no Railway, /data/estado.json)
 """
 
 import os
+import shutil
+import signal
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,30 +23,51 @@ import httpx
 
 from radar import ciclo, estado, fontes
 from radar.revisao import Saidas
+from radar.servico import Servico
 from radar.telegram import CanalDeTeste, CanalTelegram, ConversaDeTeste, ConversaTelegram
 
 USER_AGENT = "Mozilla/5.0 (compatible; RadarTechSulSC/0.1; +https://github.com/daniel-bernardino747/radar-tech-sul-sc)"
+# Estado da época do GitHub Actions, versionado no repo: semente do primeiro boot no Railway.
+SEMENTE = Path("estado/estado.json")
 
 
 def main() -> int:
     caminho = Path(os.environ.get("RADAR_ESTADO", "estado/estado.json"))
-    atual = estado.carregar(caminho)
+    _semear(caminho)
+    # O Railway encerra com SIGTERM a cada deploy; virar SystemExit faz os finally gravarem o estado.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+
     with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30, follow_redirects=True) as http:
         saidas = _saidas(http)
-        real = isinstance(saidas.canal, CanalTelegram)
-        if real:
-            print(f"Canal verificado: {saidas.canal.verificar()}")
+        if not isinstance(saidas.canal, CanalTelegram):
+            return _uma_vez(saidas, http, caminho, salvar=False)
+        print(f"Canal verificado: {saidas.canal.verificar()}", flush=True)
         if saidas.revisor_id is None:
             print("TELEGRAM_REVISOR_ID ausente: a Fila de revisão acumula sem pedir revisão.", file=sys.stderr)
-        try:
-            falhas = ciclo.executar(fontes.todas(), http, saidas, atual, datetime.now(UTC))
-        finally:
-            # Em modo de teste os ids de Post são falsos; salvar corromperia o estado.
-            if real:
-                estado.salvar(atual, caminho)
+        if "--uma-vez" in sys.argv:
+            return _uma_vez(saidas, http, caminho, salvar=True)
+        Servico(fontes.todas(), http, saidas, caminho).rodar()
+    return 0
+
+
+def _uma_vez(saidas: Saidas, http: httpx.Client, caminho: Path, salvar: bool) -> int:
+    atual = estado.carregar(caminho)
+    try:
+        falhas = ciclo.executar(fontes.todas(), http, saidas, atual, datetime.now(UTC))
+    finally:
+        # Em modo de teste os ids de Post são falsos; salvar corromperia o estado.
+        if salvar:
+            estado.salvar(atual, caminho)
     publicados = sum(e.post_id is not None for e in atual.eventos)
     print(f"{len(atual.eventos)} Eventos acompanhados, {publicados} com Post, {len(atual.fila)} na Fila de revisão.")
     return 1 if falhas else 0
+
+
+def _semear(caminho: Path) -> None:
+    if not caminho.exists() and SEMENTE.exists() and caminho.resolve() != SEMENTE.resolve():
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(SEMENTE, caminho)
+        print(f"Estado inicial copiado de {SEMENTE} para {caminho}.", flush=True)
 
 
 def _saidas(http: httpx.Client) -> Saidas:

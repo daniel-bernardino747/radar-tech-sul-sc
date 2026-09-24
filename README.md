@@ -49,7 +49,7 @@ Formato: **canal** (só o bot publica) com **grupo de discussão vinculado** par
 
 Fontes **confiáveis** são publicadas automaticamente. Fontes **abertas** passam pela Fila de revisão.
 
-CRIO, Unesc e ACATE respondem 403 a IPs do GitHub Actions (bloqueio por IP, não por User-Agent; testado em 2026-09-24). O CRIO tem coletor pronto, mas desativado; Unesc e ACATE ficaram sem coletor. Os eventos de tecnologia dessas instituições costumam aparecer também na Sympla, e o resto chega por Sugestão. Reavaliar a hospedagem se as Sugestões mostrarem que o Radar está perdendo eventos com frequência.
+CRIO, Unesc e ACATE respondem 403 a IPs de datacenter fora do Brasil (GitHub Actions, testado em 2026-09-24; o Railway também não tem região no Brasil). O bloqueio é por IP, não por User-Agent. O CRIO tem coletor pronto, mas desativado; Unesc e ACATE ficaram sem coletor. Os eventos de tecnologia dessas instituições costumam aparecer também na Sympla, e o resto chega por Sugestão. Reavaliar a hospedagem se as Sugestões mostrarem que o Radar está perdendo eventos com frequência.
 
 Fora do MVP: grupo de WhatsApp e Instagram (ver [ADR 0002](./docs/adr/0002-sem-whatsapp-e-instagram-como-fonte.md)), SC Mais Inovação (fora do ar em 2026-09), perfil de produtor do Criciúma Dev na Sympla (carrega via JS; já coberto por outras Fontes).
 
@@ -65,7 +65,7 @@ Nenhuma Fonte tem API pública útil para descoberta: a API da Sympla só lista 
 - [x] Sugestão por link
 - [x] Publicação no Canal, com edição do Post em alterações e cancelamentos
 - [x] Lembrete na véspera (a partir das 10h; sexta para eventos de segunda) e Agenda da semana às segundas (a partir das 8h, fixada no Canal no lugar da anterior)
-- [x] Execução agendada no GitHub Actions (~1h), em Python, com estado no repositório ([ADR 0001](./docs/adr/0001-github-actions-com-estado-no-repo.md))
+- [x] Execução contínua no Railway: conversa ao vivo, coleta às 8h e 18h ([ADR 0003](./docs/adr/0003-processo-continuo-no-railway.md))
 
 ## Fora do escopo (por ora)
 
@@ -80,20 +80,24 @@ Nenhuma Fonte tem API pública útil para descoberta: a API da Sympla só lista 
 ```sh
 uv sync
 uv run pytest
-uv run python -m radar   # sem TELEGRAM_BOT_TOKEN: só imprime, não publica nem salva estado
+uv run python -m radar             # sem TELEGRAM_BOT_TOKEN: roda uma vez, só imprime, não publica nem salva
+uv run python -m radar --uma-vez   # com token: conversa, coleta e divulgação uma vez, e sai
 ```
 
-Em produção, o workflow `.github/workflows/radar.yml` roda um ciclo por hora e commita `estado/estado.json`. Ele precisa dos secrets:
+Em produção, o Radar roda no Railway como processo contínuo ([ADR 0003](./docs/adr/0003-processo-continuo-no-railway.md)): responde no Telegram em segundos, coleta as Fontes às 8h e 18h e checa Lembretes e Agenda da semana a cada minuto. O deploy usa o `Dockerfile` e o `railway.json` da raiz. O GitHub Actions só roda os testes.
+
+Variáveis de ambiente do serviço:
 
 - `TELEGRAM_BOT_TOKEN`: token do bot
 - `TELEGRAM_CANAL_ID`: `@nome` do Canal (ou id numérico, se privado)
-- `TELEGRAM_REVISOR_ID`: id numérico do Revisor. Para descobrir, mande qualquer mensagem ao bot; na rodada seguinte ele responde com o seu id. Sem esse secret, a Fila de revisão acumula sem pedir revisão.
+- `TELEGRAM_REVISOR_ID`: id numérico do Revisor. Mande qualquer mensagem ao bot e ele responde com o seu id. Sem essa variável, a Fila de revisão acumula sem pedir revisão.
+- `RADAR_ESTADO=/data/estado.json`: arquivo de estado, num volume montado em `/data`. No primeiro boot, é copiado de `estado/estado.json` do repositório.
 
-Como o Radar roda de hora em hora, respostas do bot, Aprovações e Sugestões levam até 1h para serem processadas.
+Falhas de Fonte e erros inesperados chegam como mensagem privada para o Revisor (no máximo uma por hora).
 
 ## Decisões tomadas
 
 - **Canal ou grupo?** Canal + grupo de discussão vinculado.
 - **Raio da Região?** Sul de SC: AMREC + AMUREL + AMESC. Florianópolis fica fora.
 - **API/feed ou scraping?** Ver "Fontes do MVP".
-- **Onde roda?** GitHub Actions, em Python ([ADR 0001](./docs/adr/0001-github-actions-com-estado-no-repo.md)).
+- **Onde roda?** Railway, como processo contínuo em Python ([ADR 0003](./docs/adr/0003-processo-continuo-no-railway.md)), substituindo o GitHub Actions ([ADR 0001](./docs/adr/0001-github-actions-com-estado-no-repo.md)).

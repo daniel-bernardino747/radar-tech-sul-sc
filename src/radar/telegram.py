@@ -20,7 +20,9 @@ class Canal(Protocol):
 class Conversa(Protocol):
     """Conversas privadas com o bot: o Revisor decide a Fila, qualquer pessoa manda Sugestões."""
 
-    def atualizacoes(self, offset: int) -> list[dict]: ...
+    def atualizacoes(self, offset: int, espera: int = 0) -> list[dict]:
+        """Long polling: segura a conexão até `espera` segundos aguardando mensagens."""
+        ...
 
     def pedir_revisao(self, revisor_id: int, texto: str, item_id: str) -> int: ...
 
@@ -40,8 +42,9 @@ class _Bot:
         self._base = f"https://api.telegram.org/bot{token}"
         self._http = http
 
-    def _chamar(self, metodo: str, corpo: dict) -> dict | list | bool:
-        resposta = self._http.post(f"{self._base}/{metodo}", json=corpo)
+    def _chamar(self, metodo: str, corpo: dict, timeout: float | None = None) -> dict | list | bool:
+        extra = {"timeout": timeout} if timeout else {}
+        resposta = self._http.post(f"{self._base}/{metodo}", json=corpo, **extra)
         dado = resposta.json()
         if not dado.get("ok"):
             raise ErroTelegram(f"{metodo}: {dado.get('description')}")
@@ -97,10 +100,9 @@ class CanalTelegram(_Bot):
 
 
 class ConversaTelegram(_Bot):
-    def atualizacoes(self, offset: int) -> list[dict]:
-        return self._chamar("getUpdates", {
-            "offset": offset, "timeout": 0, "allowed_updates": ["message", "callback_query"],
-        })
+    def atualizacoes(self, offset: int, espera: int = 0) -> list[dict]:
+        corpo = {"offset": offset, "timeout": espera, "allowed_updates": ["message", "callback_query"]}
+        return self._chamar("getUpdates", corpo, timeout=espera + 15)
 
     def pedir_revisao(self, revisor_id: int, texto: str, item_id: str) -> int:
         botoes = [[
@@ -154,7 +156,7 @@ class ConversaDeTeste:
     def __init__(self):
         self._proximo = 0
 
-    def atualizacoes(self, offset: int) -> list[dict]:
+    def atualizacoes(self, offset: int, espera: int = 0) -> list[dict]:
         return []
 
     def pedir_revisao(self, revisor_id: int, texto: str, item_id: str) -> int:

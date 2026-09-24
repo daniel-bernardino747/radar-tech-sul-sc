@@ -1,4 +1,4 @@
-"""Estado persistido entre execuções: um JSON versionado no repositório (ADR 0001)."""
+"""Estado persistido: um JSON num volume do Railway (ADR 0003)."""
 
 import json
 from dataclasses import asdict, dataclass, field
@@ -19,6 +19,7 @@ class Estado:
     ultima_agenda: str | None = None
     # Post da Agenda da semana fixado no Canal, para desafixar quando vier a próxima.
     agenda_fixada: int | None = None
+    ultima_coleta: datetime | None = None
 
 
 def carregar(caminho: Path) -> Estado:
@@ -32,23 +33,28 @@ def carregar(caminho: Path) -> Estado:
         offset_telegram=bruto.get("offset_telegram", 0),
         ultima_agenda=bruto.get("ultima_agenda"),
         agenda_fixada=bruto.get("agenda_fixada"),
+        ultima_coleta=_data(bruto.get("ultima_coleta")),
     )
 
 
 def salvar(estado: Estado, caminho: Path) -> None:
     caminho.parent.mkdir(parents=True, exist_ok=True)
+    temporario = caminho.with_suffix(".tmp")
+    temporario.write_text(serializar(estado), encoding="utf-8")
+    temporario.replace(caminho)  # atômico: um processo derrubado no meio não corrompe o estado
+
+
+def serializar(estado: Estado) -> str:
     conteudo = {
         "offset_telegram": estado.offset_telegram,
         "ultima_agenda": estado.ultima_agenda,
         "agenda_fixada": estado.agenda_fixada,
+        "ultima_coleta": estado.ultima_coleta,
         "eventos": [asdict(e) for e in _ordenados(estado.eventos)],
         "fila": [asdict(i) for i in sorted(estado.fila, key=lambda i: (i.evento.inicio, i.evento.id))],
         "rejeitados": [asdict(e) for e in _ordenados(estado.rejeitados)],
     }
-    caminho.write_text(
-        json.dumps(conteudo, ensure_ascii=False, indent=2, default=_serializar) + "\n",
-        encoding="utf-8",
-    )
+    return json.dumps(conteudo, ensure_ascii=False, indent=2, default=_serializar) + "\n"
 
 
 def _ordenados(eventos: list[Evento]) -> list[Evento]:
@@ -61,11 +67,15 @@ def _serializar(valor: object) -> str:
     raise TypeError(type(valor))
 
 
+def _data(texto: str | None) -> datetime | None:
+    return datetime.fromisoformat(texto) if texto else None
+
+
 def _evento(d: dict) -> Evento:
     d = dict(d)
     d["inicio"] = datetime.fromisoformat(d["inicio"])
-    d["fim"] = datetime.fromisoformat(d["fim"]) if d.get("fim") else None
-    d["publicado_em"] = datetime.fromisoformat(d["publicado_em"]) if d.get("publicado_em") else None
+    d["fim"] = _data(d.get("fim"))
+    d["publicado_em"] = _data(d.get("publicado_em"))
     d["status"] = Status(d["status"])
     return Evento(**d)
 

@@ -33,10 +33,10 @@ class Sugestao:
     url: str
 
 
-def processar_conversas(estado: Estado, saidas: Saidas) -> list[Sugestao]:
+def processar_conversas(estado: Estado, saidas: Saidas, espera: int = 0) -> list[Sugestao]:
     """Aplica os cliques do Revisor e devolve os links recebidos como Sugestão."""
     sugestoes = []
-    for update in saidas.conversa.atualizacoes(estado.offset_telegram):
+    for update in saidas.conversa.atualizacoes(estado.offset_telegram, espera):
         estado.offset_telegram = update["update_id"] + 1
         if clique := update.get("callback_query"):
             _decidir(estado, clique, saidas)

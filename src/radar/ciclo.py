@@ -1,4 +1,9 @@
-"""Uma execução do Radar: conversas, coleta, consolidação em Eventos e divulgação."""
+"""As três partes do trabalho do Radar, em ritmos diferentes (ADR 0003):
+
+- atender: conversas com o bot (Revisor e Sugestões), ao vivo
+- coletar: leitura das Fontes, duas vezes por dia
+- divulgar: Lembretes e Agenda da semana, checados a cada minuto
+"""
 
 import sys
 from collections.abc import Callable, Iterable
@@ -37,9 +42,23 @@ def executar(
     agora: datetime,
     ler: LerLink = ler_link,
 ) -> list[str]:
-    """Roda um ciclo e devolve os ids das Fontes que falharam."""
-    sugestoes = revisao.processar_conversas(estado, saidas)
+    """As três partes em sequência, uma vez. Devolve os ids das Fontes que falharam."""
+    atender(estado, http, saidas, agora, ler)
+    falhas = coletar(fontes, http, saidas, estado, agora)
+    divulgar(estado, saidas, agora)
+    return falhas
 
+
+def atender(
+    estado: Estado, http: httpx.Client, saidas: Saidas, agora: datetime, ler: LerLink = ler_link, espera: int = 0
+) -> None:
+    """Processa o que chegou na conversa com o bot; `espera` segura a conexão aguardando mensagens."""
+    for sugestao in revisao.processar_conversas(estado, saidas, espera):
+        receber_sugestao(estado, sugestao, http, saidas, agora, ler)
+    _encaminhar(estado, saidas, agora)
+
+
+def coletar(fontes: Iterable[Fonte], http: httpx.Client, saidas: Saidas, estado: Estado, agora: datetime) -> list[str]:
     falhas = []
     for fonte in fontes:
         try:
@@ -50,17 +69,21 @@ def executar(
             continue
         for anuncio in anuncios:
             consolidar(estado, anuncio, fonte.confiavel, saidas)
+    _encaminhar(estado, saidas, agora)
+    return falhas
 
-    for sugestao in sugestoes:
-        receber_sugestao(estado, sugestao, http, saidas, agora, ler)
 
-    publicar_pendentes(estado, saidas, agora)
+def divulgar(estado: Estado, saidas: Saidas, agora: datetime) -> None:
     divulgacao.enviar_lembretes(estado, saidas.canal, agora)
     divulgacao.publicar_agenda(estado, saidas.canal, agora)
+    esquecer_antigos(estado, agora)
+
+
+def _encaminhar(estado: Estado, saidas: Saidas, agora: datetime) -> None:
+    """Publica o que foi aprovado e leva ao Revisor o que entrou na Fila."""
+    publicar_pendentes(estado, saidas, agora)
     revisao.expirar(estado, agora, saidas)
     revisao.pedir_revisoes(estado, saidas)
-    esquecer_antigos(estado, agora)
-    return falhas
 
 
 def consolidar(
